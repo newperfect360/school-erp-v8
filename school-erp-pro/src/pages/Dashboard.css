@@ -1,0 +1,102 @@
+.dashboard-page {
+  padding: 20px;
+  background: #f3f6fb;
+  min-height: 100vh;
+}
+
+.dash-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(135deg, #063b5d, #08796f);
+  color: white;
+  padding: 22px;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  margin-bottom: 22px;
+}
+
+.school-logo-box {
+  width: 90px;
+  height: 90px;
+  background: white;
+  color: #063b5d;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  flex-shrink: 0;
+}
+
+.dash-hero h1,
+.dash-hero h3,
+.dash-hero h4,
+.dash-hero p {
+  margin: 4px 0;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.dash-card {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border-left: 5px solid #08796f;
+}
+
+.dash-icon {
+  font-size: 38px;
+}
+
+.dash-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #334155;
+}
+
+.dash-card h2 {
+  margin: 4px 0 0;
+  font-size: 26px;
+  color: #063b5d;
+}
+
+.dash-section {
+  margin-top: 22px;
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  text-align: left;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.quick-grid button {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #08796f;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .dash-hero {
+    flex-direction: column;
+    text-align: center;
+  }
+}

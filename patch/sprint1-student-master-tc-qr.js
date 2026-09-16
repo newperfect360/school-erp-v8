@@ -5,6 +5,8 @@
 */
 
 (function(){
+const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c]));
+const display = student => Object.fromEntries(Object.entries(student).map(([k,v]) => [k, typeof v === "string" ? escape(v) : v]));
 const STORE = "erp_student_master_v1";
 
 function uid(){ return "STU-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,6); }
@@ -12,7 +14,11 @@ function load(){ try{return JSON.parse(localStorage.getItem(STORE)||"[]")}catch(
 function save(data){ localStorage.setItem(STORE, JSON.stringify(data)); }
 
 function qrUrl(text){
-  return "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=" + encodeURIComponent(text);
+  const code = qrcode(0, "M");
+  qrcode.stringToBytes = value => Array.from(new TextEncoder().encode(value));
+  code.addData(text);
+  code.make();
+  return code.createDataURL(4, 16);
 }
 
 function profileUrl(s){
@@ -22,7 +28,7 @@ function profileUrl(s){
 
 function renderStudentMaster(){
   let html = `
-  <section id="student360" class="page show">
+  <section id="student360" class="page">
     <div class="card">
       <h2>🎓 Student 360° Profile / TC Details / Photo / QR</h2>
       <div class="form">
@@ -75,6 +81,8 @@ async function fileToBase64(file){
 
 async function saveStudent(){
   const data = load();
+  if (!sm_name.value.trim() || !sm_admissionNo.value.trim()) { alert("नाव आणि प्रवेश क्रमांक भरा"); return; }
+  if(data.some(s => s.admissionNo === sm_admissionNo.value.trim())) { alert("प्रवेश क्रमांक आधीच नोंदवलेला आहे"); return; }
   const f = document.getElementById("sm_photo")?.files?.[0];
   const photo = await fileToBase64(f);
   const s = {
@@ -98,21 +106,24 @@ async function saveStudent(){
 }
 
 function renderTable(){
-  const data=load();
+  const data=load().map(display);
   const el=document.getElementById("sm_table");
   if(!el) return;
   el.innerHTML = `<tr><th>Photo</th><th>QR</th><th>Name</th><th>Class</th><th>GR</th><th>TC Details</th><th>Action</th></tr>` +
     data.map(s=>`<tr>
       <td>${s.photo?`<img src="${s.photo}" class="sm-photo">`:"-"}</td>
-      <td><img src="${s.qr || qrUrl(profileUrl(s))}" class="sm-qr"></td>
+      <td><img src="${qrUrl(profileUrl(s))}" class="sm-qr"></td>
       <td>${s.name||""}</td><td>${s.className||s.currentClass||""}</td><td>${s.admissionNo||""}</td>
       <td>${s.religion||""} / ${s.caste||""} / ${s.dob||""}</td>
-      <td><button onclick="ERPStudent.preview('${s.id}')">Preview</button></td>
+      <td><button data-student-id="${s.id}">Preview</button></td>
     </tr>`).join("");
 }
 
+document.addEventListener("click", event => { const button = event.target.closest("button[data-student-id]"); if(button) preview(button.dataset.studentId); });
+
 function preview(id){
-  const s=load().find(x=>x.id===id);
+  const raw=load().find(x=>x.id===id);
+  const s=raw && display(raw);
   if(!s) return;
   sm_preview.innerHTML = `
     <div class="student-card">
@@ -124,7 +135,7 @@ function preview(id){
         <p>जन्म दिनांक: ${s.dob} | जात: ${s.caste} | धर्म: ${s.religion}</p>
         <p>पालक मोबाईल: ${s.parentMobile}</p>
       </div>
-      <div><img src="${s.qr || qrUrl(profileUrl(s))}" class="profile-qr"><br><small>Digital Verification QR</small></div>
+      <div><img src="${qrUrl(profileUrl(s))}" class="profile-qr"><br><small>Digital Verification QR</small></div>
     </div>`;
 }
 
@@ -142,7 +153,9 @@ function importSample(){
     s.qr = qrUrl(profileUrl(s));
     sample.push(s);
   }
-  save(sample);
+  const existing = load();
+  const ids = new Set(existing.map(s => s.admissionNo));
+  save([...existing, ...sample.filter(s => !ids.has(s.admissionNo))]);
   renderTable();
   alert("34 Test Students Import झाले.");
 }
@@ -158,8 +171,10 @@ function backup(){
 function verifyFromHash(){
   const hash = location.hash || "";
   if(!hash.startsWith("#verify-student=")) return;
-  const id = decodeURIComponent(hash.replace("#verify-student=",""));
-  const s = load().find(x=>x.id===id);
+  let id;
+  try { id = decodeURIComponent(hash.replace("#verify-student=","")); } catch { id = ""; }
+  const raw = load().find(x=>x.id===id);
+  const s = raw && display(raw);
   document.body.innerHTML = `<div class="verify-page">
     <h1>✅ Digital Student Verification</h1>
     ${s ? `
@@ -173,10 +188,15 @@ function verifyFromHash(){
   </div>`;
 }
 
+window.addEventListener("hashchange", () => {
+  if (location.hash.startsWith("#verify-student=")) verifyFromHash();
+  else if (document.querySelector(".verify-page")) location.reload();
+});
+
 window.ERPStudent = {saveStudent, importSample, preview, backup, renderTable};
 
 document.addEventListener("DOMContentLoaded", ()=>{
-  verifyFromHash();
+  if (location.hash.startsWith("#verify-student=")) { verifyFromHash(); return; }
   renderStudentMaster();
 });
 })();

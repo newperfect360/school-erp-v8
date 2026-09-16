@@ -1,1 +1,8 @@
-export default async function handler(req,res){res.setHeader("Access-Control-Allow-Origin","*");const q=req.method==="POST"?req.body:req.query;const url="https://whatsbot.tech/api/send_sms?"+new URLSearchParams({api_token:q.api_token||"",mobile:q.mobile||"",message:q.message||"",device_id:q.device_id||""}).toString();try{const r=await fetch(url);res.status(200).send(await r.text())}catch(e){res.status(500).json({status:false,error:String(e),url})}}
+﻿import { parameters, validMessage, forward } from '../lib/proxy.js';
+export default async function handler(req, res) {
+  const q = parameters(req, res);
+  if (!q || !validMessage(q, res)) return;
+  const url = new URL('https://whatsbot.tech/api/send_sms');
+  url.search = new URLSearchParams({ api_token: q.api_token, mobile: q.mobile, message: q.message, device_id: q.device_id || '' });
+  return forward(url, res);
+}

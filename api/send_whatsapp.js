@@ -1,20 +1,11 @@
+﻿import { parameters, validMessage, forward, allowedUrl } from '../lib/proxy.js';
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  try {
-    const q = req.method === "POST" ? req.body : req.query;
-    const base = (q.base || "https://whatsbot.tech/api").replace(/\/$/, "");
-    const token = q.token || "";
-    const mobile = q.mobile || "";
-    const message = q.message || "";
-    const device_id = q.device_id || "";
-    if (!token || !mobile || !message) {
-      return res.status(400).send("Missing token/mobile/message");
-    }
-    const url = `${base}/send_sms?api_token=${encodeURIComponent(token)}&mobile=${encodeURIComponent(mobile)}&message=${encodeURIComponent(message)}&device_id=${encodeURIComponent(device_id)}`;
-    const r = await fetch(url);
-    const txt = await r.text();
-    return res.status(200).send(txt || "Request sent");
-  } catch (e) {
-    return res.status(500).send("Proxy Error: " + e.message);
-  }
+  const q = parameters(req, res);
+  if (!q || !validMessage({ ...q, api_token: q.token || q.api_token }, res)) return;
+  const base = (q.base || 'https://whatsbot.tech/api').replace(/\/$/, '');
+  const origins = ['https://whatsbot.tech', ...(process.env.MESSAGE_PROVIDER_ORIGINS || '').split(',').filter(Boolean)];
+  const url = allowedUrl(base + '/send_sms', origins);
+  if (!url) return res.status(400).json({ status: false, error: 'Provider origin is not configured on the server' });
+  url.search = new URLSearchParams({ api_token: q.token || q.api_token, mobile: q.mobile, message: q.message, device_id: q.device_id || '' });
+  return forward(url, res);
 }

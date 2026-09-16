@@ -1,0 +1,11 @@
+﻿import { chromium } from '@playwright/test';
+const browser=await chromium.launch({channel:'msedge'});
+const page=await browser.newPage(); const errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+page.on('console',m=>{if(m.type()==='error') errors.push(m.text())});
+await page.goto('http://127.0.0.1:5174');
+console.log('Visible pages:',await page.locator('.page.show').evaluateAll(els=>els.map(e=>e.id)));
+console.log('Missing handlers:',await page.evaluate(()=>[...document.querySelectorAll('[onclick]')].map(e=>e.getAttribute('onclick').match(/^([\w.]+)\(/)?.[1]).filter(n=>n && !n.includes('.') && typeof window[n]!=='function')));
+for(const b of await page.locator('nav button').all()) await b.click();
+await page.waitForTimeout(500);
+console.log('Errors:',errors); await browser.close();

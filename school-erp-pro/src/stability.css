@@ -1,0 +1,16 @@
+/* The starter template's dark mode and fixed width conflict with the ERP theme. */
+:root { color-scheme: light; color: #183047; --text-h: #082f49; }
+#root { width: 100%; max-width: none; text-align: left; border: 0; }
+.top-header h1 { font-size: clamp(1.35rem, 2.5vw, 2rem); line-height: 1.4; letter-spacing: normal; }
+.sidebar h2 { color: white; }
+.dash-hero h1 { color: white; font-size: clamp(1.35rem, 2.5vw, 2rem); line-height: 1.4; letter-spacing: normal; }
+button:disabled { opacity: .6; cursor: not-allowed; }
+.login-box { max-width: calc(100% - 24px); }
+.main-area > div { position: relative; overflow-x: auto; }
+input, select, textarea { color: #183047; background: white; font: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #0284c7; outline-offset: 2px; }
+@media print {
+  .sidebar, .form-grid, button, .main-area::before { display: none !important; }
+  .erp-layout, .main-area { display: block; padding: 0; overflow: visible; }
+  .card, .page, .top-header { box-shadow: none; transform: none; }
+}

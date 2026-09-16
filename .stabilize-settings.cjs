@@ -1,0 +1,12 @@
+﻿const fs=require('fs');
+let s=fs.readFileSync('school-erp-pro/src/App.jsx','utf8').replace('import "./App.css";','import "./App.css";\nimport { readStored } from "./storage";');
+s=s.replace('function App() {','function App() {\n  const [schoolSettings, setSchoolSettings] = useState(() => readStored("schoolSettings", {}));');
+s=s.replace('<Settings />','<Settings onSaved={setSchoolSettings} />').replace('<Dashboard />','<Dashboard settings={schoolSettings} />');
+s=s.replace(/<h4>([^<]+)<\/h4>/, '<h4>{schoolSettings.sansthaName || "$1"}</h4>').replace(/<h1>([^<]+)<\/h1>/,'<h1>{schoolSettings.schoolName || "$1"}</h1>').replace(/<h3>([^<]+)<\/h3>/,'<h3>{schoolSettings.address || "$1"}</h3>');
+fs.writeFileSync('school-erp-pro/src/App.jsx',s);
+s=fs.readFileSync('school-erp-pro/src/pages/Settings.jsx','utf8').replace('function Settings()','function Settings({ onSaved })').replace('    alert("Settings Save झाले");','    onSaved?.(settings);\n    alert("Settings Save झाले");');fs.writeFileSync('school-erp-pro/src/pages/Settings.jsx',s);
+s=fs.readFileSync('school-erp-pro/src/pages/Dashboard.jsx','utf8').replace('function Dashboard()','function Dashboard({ settings = {} })').replace(/<h4>([^<]+)<\/h4>/,'<h4>{settings.sansthaName || "$1"}</h4>').replace(/<h1>([^<]+)<\/h1>/,'<h1>{settings.schoolName || "$1"}</h1>').replace(/<h3>([^<]+)<\/h3>/,'<h3>{settings.address || "$1"}</h3>');fs.writeFileSync('school-erp-pro/src/pages/Dashboard.jsx',s);
+let a=fs.readFileSync('app.js','utf8');a=a.replace('function saveGeneric(k,ids){',`function saveGeneric(k,ids){const required={users:['uName','uMobile','uPass'],teachers:['tName','tMobile','tSubject'],committees:['memberName'],transport:['busNo','routeName','driverName'],mdm:['mdmDate','mdmCount','mdmMenu']}[k]||[];if(required.some(id=>!$(id).value.trim())){alert('आवश्यक माहिती भरा');return}const mobile=ids.find(id=>/Mobile$/.test(id));if(mobile&&$(mobile).value&&!/^(?:\\+?91)?\\d{10}$/.test($(mobile).value)){alert('मोबाईल नंबर चुकीचा आहे');return}if(k==='mdm'&&(!/^\\d+$/.test(mdmCount.value)||+mdmCount.value<0)){alert('लाभार्थी संख्या तपासा');return}`);
+a=a.replace('function saveGenericStudent(k,sel,ids){', "function saveGenericStudent(k,sel,ids){if(!$(ids[0]).value.trim()){alert('आवश्यक माहिती भरा');return}");
+a=a.replace('function saveDist(){',"function saveDist(){if(!/^\\d+$/.test(distQty.value)||+distQty.value<1){alert('वाटप संख्या तपासा');return}");
+fs.writeFileSync('app.js',a);
