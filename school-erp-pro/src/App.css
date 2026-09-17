@@ -70,6 +70,7 @@ td button { font-size:11px; padding:7px 10px; }
 .module-count span { display:block; color:var(--muted); font-size:10px; font-weight:400; }
 .list-heading { display:flex; align-items:center; gap:8px; padding-top:10px; }
 .list-heading span { padding:3px 8px; border-radius:5px; background:#eff4ef; color:#7c937b; font-size:11px; }
+.list-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:18px; }.list-toolbar .list-heading { margin:0; margin-right:auto; }.list-toolbar input,.list-toolbar select { width:auto; max-width:180px; padding:8px 10px; font-size:11px; }
 .menu-btn { font-size:13px; }
 .form-grid label { font-size:13px; }
 .module-heading p { font-size:13px; }

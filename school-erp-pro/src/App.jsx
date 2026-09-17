@@ -1,6 +1,7 @@
-﻿import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readStored } from "./storage";
 import Dashboard from "./pages/Dashboard";
+import TeacherDashboard from "./pages/TeacherDashboard";
 import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
 import Attendance from "./pages/Attendance";
@@ -15,62 +16,76 @@ import Parents from "./pages/Parents";
 import Trips from "./pages/Trips";
 import Sports from "./pages/Sports";
 import Library from "./pages/Library";
+import SchoolLogin from "./pages/SchoolLogin";
 import OperationalModules from "./pages/OperationalModules";
 import SchoolOperations from "./pages/SchoolOperations";
 import Icon from "./components/Icon";
-import Feedback, { notify, PageBoundary } from "./components/Feedback";
+import Feedback, { PageBoundary } from "./components/Feedback";
+import { academicYear, studentDisplayName, useLanguage } from "./design/language";
+import { Avatar, LanguageSwitch, SchoolMark } from "./design/SchoolUI";
+import { navigationGroups, navigationItems } from "./design/navigation";
 import "./App.css";
 
-const groups = [
-  { title: "आढावा", items: [["Dashboard", "मुख्यपृष्ठ", "grid", "Dashboard"]] },
-  { title: "शैक्षणिक व्यवस्थापन", items: [["Students", "विद्यार्थी", "users"], ["Teachers", "शिक्षक", "book"], ["Attendance", "उपस्थिती", "calendar"], ["Parents", "पालक", "users"], ["Homework", "गृहपाठ", "book"], ["Classwork", "वर्गपाठ", "file"], ["Results", "परीक्षा व निकाल", "chart", "निकाल"], ["Sports", "क्रीडा", "trophy"], ["Trips", "शैक्षणिक सहल", "pin"], ["Library", "ग्रंथालय", "book"]] },
-  { title: "शालेय कार्यालय", items: [["Admissions", "प्रवेश आणि GR", "file"], ["Fees", "शुल्क", "wallet"], ["Certificates", "प्रमाणपत्र", "file"], ["IDCard", "ओळखपत्र", "users", "ID Card"], ["Notices", "सूचना", "bell"], ["Reports", "अहवाल", "chart", "Reports"], ["Scholarships", "शिष्यवृत्ती", "trophy"], ["Meetings", "पालक सभा", "users"], ["Transport", "वाहतूक", "pin"], ["Inventory", "मालमत्ता", "file"], ["Timetable", "वेळापत्रक", "calendar"], ["Calendar", "दिनदर्शिका", "calendar"], ["Staff", "कर्मचारी", "users"], ["Communications", "संवाद नोंद", "bell"], ["Automation", "स्वयंचलित नियम", "settings"], ["Backup", "Backup आणि Audit", "file"], ["Settings", "सेटिंग्ज", "settings", "Settings"]] },
-];
 const pages = { Students, Teachers, Attendance, Homework, Classwork, Certificates, Results, IDCard, Reports, Parents, Trips, Sports, Library };
 const defaults = { schoolName: "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय", sansthaName: "स्व. अमानउल्ला मोतीवाला शिक्षण प्रसारक मंडळ", address: "नायगाव (भिकापूर), छत्रपती संभाजीनगर", principal: "मुख्याध्यापक", logo: "" };
 
 export default function App() {
+  const { language, t } = useLanguage();
   const [settings, setSettings] = useState(() => readStored("schoolSettings", defaults));
   const [login, setLogin] = useState(false);
   const [active, setActive] = useState("Dashboard");
+  const [pageOptions, setPageOptions] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const navigate = key => { setActive(key); setSidebarOpen(false); window.scrollTo({ top: 0 }); };
-  const activeLabel = groups.flatMap(group => group.items).find(item => item[0] === active)?.[1];
+  const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const sidebarRef = useRef(null);
+  const menuRef = useRef(null);
+  const navigate = (key, options = {}) => { setActive(key); setPageOptions(options); setSidebarOpen(false); setSearchOpen(false); setQuery(""); window.scrollTo({ top: 0 }); };
+  const activeItem = navigationItems.find(item => item[0] === active);
   const Page = pages[active];
+  const searchModules = query.trim() ? navigationItems.filter(item => `${item[1]} ${item[2]}`.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 4) : [];
+  const searchStudents = login && query.trim() ? readStored("erp_pro_students", []).filter(s => !s.archivedAt && `${s.name} ${s.student_name_en || ""} ${s.student_name_mr || ""} ${s.grNo}`.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 5) : [];
 
-  return <>
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    sidebarRef.current?.querySelector("button")?.focus();
+    const keyboard = event => {
+      if (event.key === "Escape") { setSidebarOpen(false); menuRef.current?.focus(); }
+      if (event.key === "Tab") {
+        const buttons = [...sidebarRef.current.querySelectorAll("button")].filter(button => button.offsetParent !== null);
+        if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons.at(-1)?.focus(); }
+        if (!event.shiftKey && document.activeElement === buttons.at(-1)) { event.preventDefault(); buttons[0]?.focus(); }
+      }
+    };
+    document.addEventListener("keydown", keyboard);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener("keydown", keyboard); };
+  }, [sidebarOpen]);
+
+  return <div className="design-system">
     <Feedback />
-    {!login ? <div className="login-page">
-      <aside className="login-aside">
-        <div className="login-brand"><div className="brand-mark"><Icon name="school" size={30} /></div><span>विद्यालय<span>SCHOOL MANAGEMENT</span></span></div>
-        <div className="login-story"><span className="eyebrow">A LITTLE MORE CLARITY. EVERY DAY.</span><h1>शाळेचे प्रत्येक काम.<br /><em>एकाच ठिकाणी.</em></h1><p>विद्यार्थी, शिक्षक आणि शाळेची दैनंदिन कामे—आता अधिक सुटसुटीत, अधिक व्यवस्थित.</p>
-          <div className="login-illustration" aria-hidden="true"><div className="illustration-book"><Icon name="book" size={84} /></div><span className="illustration-note note-one"><Icon name="check" /> उपस्थिती</span><span className="illustration-note note-two"><Icon name="users" /> विद्यार्थी</span><div className="illustration-dot" /></div>
-        </div>
-        <div className="login-aside-footer">शिक्षणाला समर्पित. व्यवस्थापनासाठी सुलभ.</div>
+    {!login ? <SchoolLogin settings={settings} onLogin={() => { setLogin(true); setActive("Dashboard"); setPageOptions({}); }} /> : <div className={`erp-layout${sidebarOpen ? " sidebar-is-open" : ""}`}>
+      <a className="skip-link" href="#school-main">{t("Skip to content", "मुख्य भागाकडे जा")}</a>
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => { setSidebarOpen(false); menuRef.current?.focus(); }} aria-hidden="true" />}
+      <aside ref={sidebarRef} className="sidebar" aria-label={t("Main navigation", "मुख्य नेव्हिगेशन")}>
+        <div className="brand-lockup"><SchoolMark logo={settings.logo} /><div><strong>{t("Vidyalaya", "विद्यालय")}</strong><span>{t("THE SCHOOL WORKSPACE", "शालेय कार्यस्थान")}</span></div><button className="mobile-close icon-button" onClick={() => { setSidebarOpen(false); menuRef.current?.focus(); }} aria-label="Close navigation"><Icon name="close" /></button></div>
+        <div className="sidebar-school"><span>{t("G. S. Secondary School", "गु. सा. माध्यमिक विद्यालय")}</span><small>{t("Naigaon · Maharashtra", "नायगाव · महाराष्ट्र")}</small></div>
+        <nav className="sidebar-nav">{navigationGroups.map(group => <div className="nav-group" key={group.en}><div className="sidebar-section-label">{t(group.en, group.mr)}</div>{group.items.map(([key, en, mr, icon, legacyLabel]) => <button key={key} data-nav={key} aria-label={language === "mr" ? legacyLabel || mr : en} aria-current={active === key ? "page" : undefined} className={`menu-btn${active === key ? " active" : ""}`} onClick={() => navigate(key)}><Icon name={icon} size={19} /><span>{t(en, mr)}</span>{active === key && <Icon name="chevron" size={14} />}</button>)}</div>)}</nav>
+        <div className="sidebar-footer"><Avatar name="School Admin" /><div><strong>{t("School administrator", "शाळा प्रशासक")}</strong><span>{t("School office", "शालेय कार्यालय")}</span></div><button className="icon-button logout" aria-label="Logout" title={t("Sign out", "बाहेर पडा")} onClick={() => { setLogin(false); setSidebarOpen(false); setSearchOpen(false); setQuery(""); }}><Icon name="logout" size={18} /></button></div>
       </aside>
-      <main className="login-main"><form className="login-box" onSubmit={event => {
-        event.preventDefault(); const data = new FormData(event.currentTarget);
-        if (data.get("username") === "admin" && data.get("password") === "123456") setLogin(true);
-        else notify("Username किंवा Password चुकीचा आहे. पुन्हा प्रयत्न करा.");
-      }}><span className="eyebrow">आपले स्वागत आहे</span><h2>School workspace</h2><p className="login-lead">आपल्या शाळेच्या व्यवस्थापनासाठी प्रवेश करा.</p>
-        <label>वापरकर्ता नाव<input name="username" aria-label="Username" autoComplete="username" placeholder="Username" required /></label>
-        <label>पासवर्ड<input name="password" aria-label="Password" autoComplete="current-password" type="password" placeholder="Password" required /></label>
-        <button type="submit" aria-label="Login">प्रवेश करा <Icon name="arrow" size={18} /></button>
-        <div className="login-hint"><span>LOCAL DEMO ACCESS</span><code>admin</code><span>/</span><code>123456</code></div>
-        <div className="login-school"><Icon name="school" size={20} /><p>{settings.schoolName}<small>{settings.address}</small></p></div>
-      </form><p className="login-bottom">School ERP · शालेय व्यवस्थापन</p></main>
-    </div> : <div className={`erp-layout${sidebarOpen ? " sidebar-is-open" : ""}`}>
-      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
-      <aside className="sidebar" aria-label="मुख्य नेव्हिगेशन"><div className="brand-lockup"><div className="brand-mark"><Icon name="school" size={25} /></div><div><strong>विद्यालय</strong><span>SCHOOL WORKSPACE</span></div><button className="mobile-close icon-button" onClick={() => setSidebarOpen(false)} aria-label="Close navigation"><Icon name="close" /></button></div>
-        <nav className="sidebar-nav">{groups.map(group => <div className="nav-group" key={group.title}><div className="sidebar-section-label">{group.title}</div>{group.items.map(([key, label, icon, accessibleLabel]) => <button key={key} aria-label={accessibleLabel || label} aria-current={active === key ? "page" : undefined} className={`menu-btn${active === key ? " active" : ""}`} onClick={() => navigate(key)}><Icon name={icon} size={18} /><span>{label}</span>{active === key && <span className="active-dot" />}</button>)}</div>)}</nav>
-        <div className="sidebar-footer"><div className="avatar">AD</div><div><strong>शाळा प्रशासक</strong><span>Administrator</span></div><button className="icon-button logout" aria-label="Logout" title="Logout" onClick={() => { setLogin(false); setSidebarOpen(false); }}><Icon name="logout" size={19} /></button></div>
-      </aside>
-      <main className="main-area"><header className="top-header"><button className="mobile-menu icon-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><Icon name="menu" /></button><div className="header-copy"><div className="header-school">{settings.schoolName}</div><div className="breadcrumb">शालेय व्यवस्थापन <Icon name="chevron" size={12} /><strong>{activeLabel}</strong></div></div><div className="header-actions"><span className="status-pill"><span /> Local workspace</span><div className="avatar">AD</div></div></header>
-        <div className="page-content"><PageBoundary key={active}>
-          {active === "Dashboard" ? <Dashboard settings={settings} onNavigate={navigate} /> : active === "Settings" ? <Settings onSaved={setSettings} /> : ["Admissions", "Library", "Inventory", "Timetable", "Calendar", "Staff", "Backup"].includes(active) ? <SchoolOperations module={active} /> : Page ? <Page /> : <OperationalModules key={active} module={active} />}
-        </PageBoundary></div>
-        <footer className="workspace-footer"><span>School ERP</span><span>शिक्षणासाठी अधिक वेळ. व्यवस्थापनासाठी अधिक सुलभता.</span></footer>
-      </main>
+      <div className="main-area">
+        <header className="top-header"><button ref={menuRef} className="mobile-menu icon-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation" aria-expanded={sidebarOpen}><Icon name="menu" /></button>
+          <div className="header-copy"><div className="header-school" title={settings.schoolName}>{settings.schoolName}</div><div className="breadcrumb">{t("My school", "आपली शाळा")}<Icon name="chevron" size={12} /><strong>{activeItem ? t(activeItem[1], activeItem[2]) : active}</strong></div></div>
+          <div className="header-actions"><span className="academic-year"><Icon name="calendar" size={15} />{academicYear(settings)}</span><LanguageSwitch /><button className="icon-button" aria-label="Search school" aria-expanded={searchOpen} onClick={() => setSearchOpen(!searchOpen)}><Icon name="search" /></button><button className="icon-button notification-button" aria-label={t("Open noticeboard", "सूचना केंद्र उघडा")} onClick={() => navigate("Notices")}><Icon name="bell" /></button><button className="profile-button" onClick={() => navigate("TeacherDashboard")} aria-label={t("Open teaching workspace", "शिक्षक कार्यस्थान उघडा")}><Avatar name="School Admin" /></button></div>
+        </header>
+        {searchOpen && <section className="school-search" aria-label="School search"><label><Icon name="search" size={18} /><input autoFocus aria-label="Search students or modules" placeholder={t("Search a student, GR number or module…", "विद्यार्थी, GR क्रमांक किंवा विभाग शोधा…")} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Escape") setSearchOpen(false); }} /></label>{query.trim() && <div className="search-results">{searchModules.map(([key, en, mr, icon]) => <button key={key} onClick={() => navigate(key)}><Icon name={icon} />{t(en, mr)}<Icon name="arrow" size={16} /></button>)}{searchStudents.map(s => <button key={s.id} onClick={() => navigate("Students", { studentId: s.id })}><Avatar name={s.name} photo={s.photo} size="small" /><span>{studentDisplayName(s, language)}<small>{t("Class", "इयत्ता")} {s.className}/{s.division} · GR {s.grNo}</small></span><Icon name="arrow" size={16} /></button>)}{!searchModules.length && !searchStudents.length && <p>{t("No matching students or modules.", "संबंधित विद्यार्थी किंवा विभाग सापडला नाही.")}</p>}</div>}</section>}
+        <main id="school-main" tabIndex={-1} className="page-content"><PageBoundary key={active}>
+          {active === "Dashboard" ? <Dashboard settings={settings} onNavigate={navigate} /> : active === "TeacherDashboard" ? <TeacherDashboard onNavigate={navigate} /> : active === "Settings" ? <Settings onSaved={setSettings} /> : ["Admissions", "Library", "Inventory", "Timetable", "Calendar", "Staff", "Backup"].includes(active) ? <SchoolOperations key={active} module={active} /> : Page ? <Page key={`${active}:${pageOptions.studentId || ""}:${pageOptions.initialClass || ""}:${pageOptions.initialDivision || ""}`} {...pageOptions} onNavigate={navigate} settings={settings} /> : <OperationalModules key={active} module={active} />}
+        </PageBoundary></main>
+        <footer className="workspace-footer"><span><Icon name="cap" size={15} />{t("Every student. Every possibility.", "प्रत्येक विद्यार्थी. प्रत्येक संधी.")}</span><span>{t("Academic year", "शैक्षणिक वर्ष")} {academicYear(settings)}</span></footer>
+        <nav className="mobile-bottom-nav" aria-label="Quick navigation">{[["Dashboard", "Home", "मुख्यपृष्ठ", "grid"], ["Students", "Students", "विद्यार्थी", "users"], ["Attendance", "Attendance", "उपस्थिती", "calendar"], ["TeacherDashboard", "My day", "माझा दिवस", "cap"]].map(([key, en, mr, icon]) => <button key={key} onClick={() => navigate(key)} aria-current={active === key ? "page" : undefined}><Icon name={icon} size={21} /><span>{t(en, mr)}</span></button>)}</nav>
+      </div>
     </div>}
-  </>;
+  </div>;
 }

@@ -1,0 +1,86 @@
+{
+  "capturedAt": "2026-09-17T03:40:27.822Z",
+  "baseURL": "http://127.0.0.1:5180",
+  "fixture": "fictional",
+  "screens": [
+    {
+      "file": "01-login",
+      "label": "School sign-in",
+      "description": "School identity, readable form, English / Marathi switch.",
+      "mobile": false
+    },
+    {
+      "file": "02-dashboard",
+      "label": "School overview",
+      "description": "Live school totals, recorded attendance, class overview and academic calendar.",
+      "mobile": false
+    },
+    {
+      "file": "03-students",
+      "label": "Student directory",
+      "description": "Find students first; add and import from focused actions.",
+      "mobile": false
+    },
+    {
+      "file": "04-profile",
+      "label": "Student quick profile",
+      "description": "Bilingual identity, guardian contacts, history and an opaque student QR.",
+      "mobile": false
+    },
+    {
+      "file": "05-attendance",
+      "label": "Class attendance",
+      "description": "Class register, present/absent controls and immediate parent contact.",
+      "mobile": false
+    },
+    {
+      "file": "06-teacher",
+      "label": "Teaching workspace",
+      "description": "Administrator preview of assigned classes, parent follow-ups and lesson actions.",
+      "mobile": false
+    },
+    {
+      "file": "07-marathi",
+      "label": "मराठी शालेय आढावा",
+      "description": "Core presentation switches languages without rewriting student data.",
+      "mobile": false
+    },
+    {
+      "file": "08-mobile-dashboard",
+      "label": "Mobile school overview",
+      "description": "Teacher-friendly bottom navigation and a compact daily overview.",
+      "mobile": true
+    },
+    {
+      "file": "09-mobile-attendance",
+      "label": "Mobile attendance",
+      "description": "Student cards and large contact controls, without sideways scrolling.",
+      "mobile": true
+    },
+    {
+      "file": "10-mobile-teacher",
+      "label": "Mobile teaching workspace",
+      "description": "Assigned work and follow-ups on a phone.",
+      "mobile": true
+    },
+    {
+      "file": "11-mobile-profile",
+      "label": "Mobile student profile",
+      "description": "Student identity, profile sections and parent contacts.",
+      "mobile": true
+    },
+    {
+      "file": "12-mobile-navigation",
+      "label": "Mobile navigation",
+      "description": "Grouped school navigation with focus containment and Escape dismissal.",
+      "mobile": true
+    },
+    {
+      "file": "13-mobile-login",
+      "label": "Mobile sign-in",
+      "description": "The same school identity on a phone.",
+      "mobile": true
+    }
+  ],
+  "errors": []
+}

@@ -46,7 +46,10 @@ function downloadJson(filename, value) {
 }
 
 export default function SchoolOperations({ module = "Admissions" }) {
-  if (module === "Backup") return <BackupPanel />;
+  return module === "Backup" ? <BackupPanel /> : <SchoolRecordPanel key={module} module={module} />;
+}
+
+function SchoolRecordPanel({ module }) {
   const definition = modules[module] || modules.Admissions;
   const [items, setItems] = useStoredState(definition.key, []);
   const [form, setForm] = useState(() => Object.fromEntries(definition.fields.map((field) => [field, ""])));
