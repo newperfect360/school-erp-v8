@@ -5,6 +5,9 @@ import android.graphics.Canvas
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.gbsschool.app.core.designsystem.SchoolTheme
 import com.gbsschool.app.feature.auth.LoginScreen
 import com.gbsschool.app.navigation.SchoolApp
@@ -21,6 +24,25 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SchoolUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w480dp-h1040dp-xxhdpi")
+    fun largePhoneWithEnlargedTextKeepsNavigationReachable() {
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                SchoolTheme { SchoolApp() }
+            }
+        }
+        compose.onNodeWithText("Explore preview dashboard").performScrollTo().performClick()
+        compose.onNodeWithText("DESIGN PREVIEW · SAMPLE DATA").assertIsDisplayed()
+        capture("dashboard-large-font")
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Educational Trip") and hasClickAction())
+        compose.onNode(hasText("Educational Trip") and hasClickAction()).performClick()
+        compose.onNodeWithText("Got it").performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        compose.onNodeWithContentDescription("Exit preview").performScrollTo().performClick()
+        compose.onNodeWithText("Welcome back").performScrollTo().assertIsDisplayed()
+    }
 
     @Test fun previewNavigationAndModuleNotice() {
         compose.setContent { SchoolTheme { SchoolApp() } }

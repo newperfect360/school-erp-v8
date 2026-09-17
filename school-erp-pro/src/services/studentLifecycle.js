@@ -27,6 +27,13 @@ export function planMovement(student,change,{results=[],attendance={},date=new D
   if(student.academicYear)throw Error('An academic year already exists. Use year-end processing.');
   if(yearStart(change.academicYear)===null)throw Error('Use a valid academic year, for example 2026-27.');
   next.academicYear=change.academicYear;
+ }else if(action==='Academic Year Change'){
+  if(!lifecycleActive(student))throw Error('Only enrolled students can change academic year.');
+  const target=yearStart(change.academicYear);
+  if(target===null)throw Error('Use a valid academic year, for example 2027-28.');
+  if(target===yearStart(student.academicYear))throw Error('Choose a different academic year.');
+  snapshot=academicSnapshot(student,results,attendance,action,day);
+  next={...next,academicYear:change.academicYear,enrollmentStartedOn:`${target}-06-01`};
  }else if(action==='Class Transfer'){
   if(!lifecycleActive(student))throw Error('Only enrolled students can change class.');
   if(!/^(?:[1-9]|1[0-2])$/.test(change.className))throw Error('Choose standard 1–12.');

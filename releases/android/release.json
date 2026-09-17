@@ -1,0 +1,12 @@
+{
+  "packageId": "com.gbsschool.app",
+  "versionName": "1.0.0",
+  "versionCode": 1,
+  "file": "GBSSCHOOL-v1.0.0.apk",
+  "buildType": "debug — UI preview only",
+  "minSdk": 24,
+  "targetSdk": 36,
+  "bytes": 23480478,
+  "sha256": "badb3afd16fb77766f32d8a9a36a86d83413e48aad72dd097022cd514c9a6224",
+  "releaseDate": "2026-09-17"
+}

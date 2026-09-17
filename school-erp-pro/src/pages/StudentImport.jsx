@@ -9,7 +9,7 @@ import { reviewStudentImport, applyStudentImport, updateFields } from "../servic
 import { PageHeading, EmptyState } from "../design/SchoolUI";
 import { notify } from "../components/Feedback";
 
-export default function StudentImport({ onDone, onBack }) {
+export default function StudentImport({ onDone, onBack, onNavigate }) {
   const { t } = useLanguage();
   const [file, setFile] = useState(null), [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("create"), [fields, setFields] = useState(updateFields);
@@ -20,7 +20,7 @@ export default function StudentImport({ onDone, onBack }) {
   const upload = async event => {
     const uploadFile = event.target.files?.[0]; event.target.value = ""; if (!uploadFile) return;
     setLoading(true); invalidate(); setChoices({}); setOverrides({}); setFile(null); setPage(0);
-    try { const parsed = await parseStudentFile(uploadFile); if (!parsed.rows.length) throw new Error("No student rows found."); setFile({ ...parsed, name: uploadFile.name }); }
+    try { const parsed = await parseStudentFile(uploadFile); if (!parsed.rows.length) throw new Error("No student rows found."); setFile({ ...parsed, name: uploadFile.name }); setOverrides(Object.fromEntries(parsed.rows.flatMap((row,index)=>{const student=normalizeStudentRow(row,parsed.mapping),suggestion=suggestMarathiName(student.name);return suggestion&&!student.student_name_mr?[[index,{student_name_mr:suggestion}]]:[]}))); }
     catch (error) { notify(error.message); } finally { setLoading(false); }
   };
   const validate = () => {
@@ -54,7 +54,7 @@ export default function StudentImport({ onDone, onBack }) {
   return <div className="core-page import-page">
     <button className="school-link" onClick={onBack}>← Student Master</button>
     <PageHeading eyebrow="STUDENT RECORDS" title="Student Excel Import" description="Upload → map columns → preview → validate → review changes → confirm. Nothing is saved before confirmation." />
-    <section className="school-panel workflow-panel"><div className="import-actions">
+    <div className="import-step-strip"><span><b>01</b> Excel records</span><span><b>02</b> Review English & Marathi</span><button onClick={()=>onNavigate("PhotoImport")}><b>03</b> Match photo folder ?</button></div><section className="school-panel workflow-panel"><div className="import-actions">
       <button className="school-button secondary" onClick={() => downloadStudentTemplate(columns)}>{t("Download Student Excel Template")}</button>
       <label className="school-button secondary">{t("Upload Excel")}<input aria-label="Upload Excel" type="file" accept=".xlsx,.xls,.csv" onChange={upload} disabled={loading} /></label>
       <button disabled={!file} onClick={()=>{const next={...overrides};for(const [index,row] of (file?.rows||[]).entries()){const student=normalizeStudentRow(row,file.mapping),name=suggestMarathiName(student.name);if(name&&!student.student_name_mr&&!next[index]?.student_name_mr)next[index]={...next[index],student_name_mr:name}}setOverrides(next);invalidate();notify("Limited offline suggestions filled for known names. Validate and manually review every Marathi spelling. Unknown names need manual entry.")}}>Suggest Marathi names (review required)</button><button className="school-button secondary" onClick={() => exportStudents(readStored("erp_pro_students", []))}>{t("Export Students")}</button>
@@ -64,7 +64,7 @@ export default function StudentImport({ onDone, onBack }) {
     <details><summary>Choose fields allowed to update (blank cells never erase data)</summary><div className="check-grid">{updateFields.map(field => <label key={field}><input type="checkbox" checked={fields.includes(field)} onChange={e => { setFields(e.target.checked ? [...fields, field] : fields.filter(f => f !== field)); invalidate(); }} />{studentColumns.find(([, key]) => key === field)?.[0] || field}</label>)}</div></details>
     </section>
     {loading ? <p role="status">Reading workbook…</p> : !file ? <EmptyState icon="upload" title="Bring your existing school list" description="Download the template or upload an old school file. You can map its headers without retyping." /> : <>
-      <section className="school-panel workflow-panel"><h3>Column mapping · {file.name}</h3><div className="mapping-grid">{file.headers.map(header => <label key={header}>{header}<select aria-label={`Map ${header}`} value={file.mapping[header] || ""} onChange={e => { setFile({ ...file, mapping: { ...file.mapping, [header]: e.target.value } }); invalidate(); }}><option value="">Skip column</option>{studentColumns.map(([label, field]) => <option key={field} value={field}>{label}</option>)}</select></label>)}</div><button className="school-button" onClick={validate}>{t("Validate")}</button><p>English and Marathi are stored separately. Edit Marathi names below, then validate again. Automatic transliteration is not connected; names are never silently translated.</p></section>
+      <section className="school-panel workflow-panel"><h3>Column mapping · {file.name}</h3><div className="mapping-grid">{file.headers.map(header => <label key={header}>{header}<select aria-label={`Map ${header}`} value={file.mapping[header] || ""} onChange={e => { setFile({ ...file, mapping: { ...file.mapping, [header]: e.target.value } }); invalidate(); }}><option value="">Skip column</option>{studentColumns.map(([label, field]) => <option key={field} value={field}>{label}</option>)}</select></label>)}</div><button className="school-button" onClick={validate}>{t("Validate")}</button><p>English and Marathi are stored separately. Edit Marathi names below, then validate again. Known names receive offline suggestions. Unknown spellings and general content translation require manual review; no external service is contacted.</p></section>
       <section className="school-panel workflow-panel"><h3>Preview Data · {file.rows.length} rows</h3>{review && <p role="status">{results.filter(r => r.errors.length).length} rows with errors · {results.filter(r => r.duplicate).length} existing matches</p>}
         <div className="table-scroll"><table><thead><tr><th>Row</th><th>Student / uploaded values</th><th>Marathi correction</th><th>Validation / changes</th><th>Action</th></tr></thead><tbody>{shown.map((entry, offset) => {
           const index = page * 25 + offset, row = file.rows[index], result = review ? entry : null;

@@ -23,6 +23,15 @@ const staff=portalGroups.find(g=>g.en==='Staff'),scholarship=portalGroups.find(g
 portalGroups.find(g=>g.en==='More').items.push(...staff.items,...scholarship.items);
 portalGroups.splice(portalGroups.indexOf(staff),1);portalGroups.splice(portalGroups.indexOf(scholarship),1);
 portalGroups.splice(4,0,{en:'Exam',mr:'परीक्षा',icon:'file',items:[item('Exams & Results','परीक्षा व निकाल','Results'),item('Marks Entry','गुण नोंद','Results'),format('Progress Cards','प्रगती पत्रके','Progress Card'),format('Annual Results','वार्षिक निकाल','Annual Result')]});
+// Keep the primary school navigation in a stable administrative order.
+portalGroups.push({en:'Exam',mr:'???????',icon:'book',items:[item('Exam & Marks Entry','??????? ? ???','Results'),item('Exam Timetable','??????? ?????????','Timetable')]},{en:'Results',mr:'?????',icon:'chart',items:[item('Student Results','?????????? ?????','Results'),format('Result Documents','????? ?????????','Progress Card')]});
+const primaryOrder=['About','Students','Academics','Attendance','Exam','Results','Sports','Educational Trip','Library','Parents','Certificates','Reports','More'];
+const scholarship=portalGroups.find(g=>g.en==='Scholarship'),more=portalGroups.find(g=>g.en==='More');
+if(scholarship&&more){more.items.push(...scholarship.items);portalGroups.splice(portalGroups.indexOf(scholarship),1);}
+portalGroups.sort((a,b)=>primaryOrder.indexOf(a.en)-primaryOrder.indexOf(b.en));
+const studentMenu=portalGroups.find(g=>g.en==='Students');
+studentMenu.items.sort((a,b)=>{const order=['Student Master','Add Student','Excel Import','Photo Folder Import'];const rank=x=>order.includes(x.en)?order.indexOf(x.en):4;return rank(a)-rank(b)});
+
 export const roles = ['Super Admin','Headmaster','Admin','Class Teacher','Subject Teacher','Sports Teacher','Trip In-charge','Library Staff','Office Staff','Accounts Staff'];
 const permissions = {
  'Accounts Staff':['Dashboard','Students','Fees','Reports','Communications'],

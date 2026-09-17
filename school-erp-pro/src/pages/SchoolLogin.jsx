@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Icon from "../components/Icon";
+import { DownloadAppCard } from './DownloadApp';
 import { academicYear, useLanguage } from "../design/language";
 import { CampusIllustration, LanguageSwitch, SchoolMark } from "../design/SchoolUI";
 
@@ -36,6 +37,6 @@ export default function SchoolLogin({ settings, onLogin }) {
         <div className="login-academic-year"><Icon name="calendar" size={17} />{t("Academic year", "शैक्षणिक वर्ष")} <strong>{academicYear(settings)}</strong></div>
       </form>
       <div className="login-bottomline"><SchoolMark logo={settings.logo} /><p>{settings.schoolName}<span>{settings.address}</span></p></div>
-    </main>
+    <DownloadAppCard/></main>
   </div>;
 }
