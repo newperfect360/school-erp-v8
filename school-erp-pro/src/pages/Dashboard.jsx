@@ -1,60 +1,35 @@
+﻿import { readStored, localDate } from "../storage";
+import Icon from "../components/Icon";
 import "./Dashboard.css";
-import { readStored, localDate } from "../storage";
 
-export default function Dashboard({ settings = {} }) {
+export default function Dashboard({ settings = {}, onNavigate }) {
   const students = readStored("erp_pro_students", []);
-  const attendance = readStored("erp_pro_attendance", {})[localDate()] || {};
-  const trips = readStored("erp_pro_trips", []);
-  const scholarships = readStored("erp_pro_scholarships", []);
-  const meetings = readStored("erp_pro_meetings", []);
-  const pendingConsents = trips.reduce((total, trip) => total + trip.participants.filter((participant) => participant.consent === "प्रलंबित").length, 0);
-  const classCards = ["8", "9", "10", "11", "12"].map((className) => ({ title: `${className}वी विद्यार्थी`, value: students.filter((student) => student.className === className).length, icon: "◈" }));
-  const cards = [
-    { title: "विद्यार्थी", value: students.length, icon: "🎓" },
-    { title: "शिक्षक", value: readStored("erp_pro_teachers", []).length, icon: "👨‍🏫" },
-    { title: "आज उपस्थित", value: students.filter(s => attendance[s.id] === "Present").length, icon: "✅" },
-    { title: "आज अनुपस्थित", value: students.filter(s => attendance[s.id] === "Absent").length, icon: "❌" },
-    { title: "गृहपाठ", value: readStored("erp_pro_homework", []).length, icon: "📚" },
-    { title: "वर्गपाठ", value: readStored("erp_pro_classwork", []).length, icon: "📝" },
-    { title: "निकाल QR", value: "0", icon: "📊" },
-    { title: "प्रमाणपत्र QR", value: "0", icon: "📄" },
-    { title: "ID Card QR", value: "0", icon: "🆔" },
-    { title: "Reports", value: "0", icon: "📈" },
-    { title: "WhatsApp", value: "Web Link", icon: "📲" },
-    { title: "सक्रिय सहली", value: trips.length, icon: "🧭" },
-    { title: "प्रलंबित संमती", value: pendingConsents, icon: "✍️" },
-    { title: "शिष्यवृत्ती", value: scholarships.length, icon: "🏅" },
-    { title: "पालक सभा", value: meetings.length, icon: "👥" },
-  ];
-
-  return (
-    <div className="dashboard-page">
-      <div className="dash-hero">
-        <div className="school-logo-box">🏫</div>
-        <div>
-          <h4>{settings.sansthaName || "स्व. अमानउल्ला मोतीवाला शिक्षण प्रसारक मंडळ, औरंगाबाद"}</h4>
-          <h1>{settings.schoolName || "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय"}</h1>
-          <h3>{settings.address || "नायगाव (भिकापूर), ता. जि. छत्रपती संभाजीनगर"}</h3>
-          <p>शैक्षणिक वर्ष २०२६–२७ · आजची शाळा स्थिती</p>
-        </div>
-      </div>
-
-      <div className="dash-grid">
-        {[...classCards, ...cards].map((card, index) => (
-          <div className="dash-card" key={index}>
-            <div className="dash-icon">{card.icon}</div>
-            <div>
-              <h3>{card.title}</h3>
-              <h2>{card.value}</h2>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="dash-section">
-        <h2>📌 कामकाज केंद्र</h2>
-        <p>{students.length ? "आजची उपस्थिती, पालक संवाद आणि आगामी शैक्षणिक सहली येथे व्यवस्थापित करा." : "विद्यार्थी मास्टरमध्ये पहिली नोंद तयार केल्यावर dashboardवरील आकडे आपोआप अपडेट होतील."}</p>
-      </div>
-    </div>
-  );
+  const teachers = readStored("erp_pro_teachers", []);
+  const today = localDate();
+  const attendance = readStored("erp_pro_attendance", {})[today] || {};
+  const homework = readStored("erp_pro_homework", []);
+  const classwork = readStored("erp_pro_classwork", []);
+  const present = students.filter(s => attendance[s.id] === "Present").length;
+  const absent = students.filter(s => attendance[s.id] === "Absent").length;
+  const pending = Math.max(0, students.length - present - absent);
+  const rate = students.length ? Math.round(present / students.length * 100) : 0;
+  const classes = [...new Set(students.map(s => s.className).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'mr', { numeric: true }));
+  const modules = [["Students", "विद्यार्थी", "नोंदी व वैयक्तिक माहिती", "users", "mint"], ["Attendance", "उपस्थिती", "दैनिक वर्ग नोंद", "calendar", "blue"], ["Homework", "गृहपाठ", "विषयवार शैक्षणिक काम", "book", "sand"], ["Results", "परीक्षा व निकाल", "गुण आणि प्रगती", "chart", "lilac"], ["Trips", "शैक्षणिक सहल", "सहभागी विद्यार्थी व संमती", "pin", "rose"], ["Sports", "क्रीडा", "क्रीडा व स्पर्धा नोंदी", "trophy", "rose"], ["Scholarships", "शिष्यवृत्ती", "पात्रता आणि deadlines", "trophy", "mint"], ["Library", "ग्रंथालय", "पुस्तक issue/return", "book", "blue"], ["Parents", "पालक संवाद", "संपर्क आणि संदेश", "users", "sand"], ["Certificates", "प्रमाणपत्रे", "प्रमाणपत्र व QR preview", "file", "mint"], ["Calendar", "आगामी कार्यक्रम", "शालेय दिनदर्शिका", "calendar", "lilac"]];
+  const records = [...homework.map(item => ({...item, kind:'गृहपाठ', icon:'book'})), ...classwork.map(item => ({...item, kind:'वर्गपाठ', icon:'file'}))].sort((a,b) => (b.date || '').localeCompare(a.date || '')).slice(0,4);
+  const todayLabel = new Date().toLocaleDateString('mr-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  return <div className="dashboard-page">
+    <div className="dashboard-title"><div><span className="eyebrow">आपल्या शाळेचा आढावा</span><h1>नमस्कार, प्रशासक <span className="greeting-dot">✦</span></h1><p>आजच्या शालेय कामकाजाची सुरुवात इथून करा.</p></div><div className="date-badge"><Icon name="calendar" size={18} /><span>{todayLabel}</span></div></div>
+    <section className="overview-grid" aria-label="महत्त्वाची आकडेवारी">{[
+      ['एकूण विद्यार्थी',students.length,'users','mint','विद्यार्थी मास्टर','Students'],
+      ['एकूण शिक्षक',teachers.length,'book','blue','नोंदणीकृत शिक्षक','Teachers'],
+      ['आज उपस्थित',present,'check','mint',`${students.length} पैकी नोंदवलेले`,'Attendance'],
+      ['आज अनुपस्थित',absent,'calendar','rose','दिनांकनिहाय नोंद','Attendance'],
+    ].map(([label,value,icon,tone,detail,key]) => <button className="stat-card" key={label} onClick={() => onNavigate(key)}><div className="stat-top"><span>{label}</span><span className={`icon-tile ${tone}`}><Icon name={icon} /></span></div><strong>{value.toLocaleString('mr-IN')}</strong><div className="stat-bottom"><span>{detail}</span><Icon name="arrow" size={15} /></div></button>)}</section>
+    <div className="dashboard-middle"><section className="dashboard-panel attendance-panel"><div className="panel-heading"><div><h2>आजची उपस्थिती</h2><p>विद्यार्थ्यांच्या जतन केलेल्या नोंदींवर आधारित</p></div><button className="text-button" onClick={() => onNavigate('Attendance')}>उपस्थिती नोंदवा <Icon name="arrow" size={15} /></button></div><div className="attendance-visual"><div className="attendance-ring" style={{'--progress':`${rate}%`}}><div><strong>{rate.toLocaleString('mr-IN')}<small>%</small></strong><span>उपस्थिती</span></div></div><div className="attendance-legend">{[['उपस्थित',present,'mint'],['अनुपस्थित',absent,'rose'],['नोंद बाकी',pending,'sand']].map(([label,value,tone])=><div key={label}><span className={`legend-dot ${tone}`} /><span>{label}</span><strong>{value.toLocaleString('mr-IN')}</strong></div>)}<p>{students.length ? 'आजची नोंद पूर्ण करण्यासाठी उपस्थिती पान उघडा.' : 'विद्यार्थी जोडल्यानंतर उपस्थितीचा आढावा येथे दिसेल.'}</p></div></div></section>
+    <section className="daily-card"><div className="daily-decoration" aria-hidden="true"><Icon name="school" size={100} /></div><span className="eyebrow">दैनंदिन कामकाज</span><h2>प्रत्येक दिवस,<br />थोडा अधिक सुलभ.</h2><p>विद्यार्थ्यांची उपस्थिती नोंदवा आणि वर्गाचे काम व्यवस्थित ठेवा.</p><button onClick={() => onNavigate('Attendance')}>आजची उपस्थिती <Icon name="arrow" size={17} /></button><span className="daily-footnote">{settings.address || 'आपले शालेय कार्यक्षेत्र'}</span></section></div>
+    <section className="modules-section"><div className="section-title"><div><h2>शालेय व्यवस्थापन</h2><p>आपल्या दैनंदिन कामासाठी थेट प्रवेश</p></div><span className="section-counter">{modules.length.toLocaleString('mr-IN')} कार्यक्षेत्रे</span></div><div className="module-shortcuts">{modules.map(([key,title,description,icon,tone])=><button className="module-shortcut" key={key} onClick={()=>onNavigate(key)}><span className={`icon-tile ${tone}`}><Icon name={icon} size={22} /></span><div><strong>{title}</strong><span>{description}</span></div><Icon name="chevron" size={16} /></button>)}</div></section>
+    <div className="dashboard-bottom"><section className="dashboard-panel"><div className="panel-heading"><div><h2>वर्गनिहाय विद्यार्थी</h2><p>विद्यार्थी मास्टरमधील सध्याच्या नोंदी</p></div><Icon name="users" /></div>{classes.length ? <div className="class-bars">{classes.map(name=>{const count=students.filter(s=>s.className===name).length;return <div className="class-row" key={name}><span>इयत्ता {name}</span><div><span style={{width:`${count/students.length*100}%`}} /></div><strong>{count}</strong></div>})}</div> : <div className="compact-empty"><Icon name="users" size={28} /><h3>अद्याप विद्यार्थी नोंदी नाहीत</h3><p>पहिली नोंद तयार करा. वर्गांचा आढावा आपोआप दिसेल.</p><button className="text-button" onClick={()=>onNavigate('Students')}>विद्यार्थी पान उघडा <Icon name="arrow" size={15} /></button></div>}</section>
+    <section className="dashboard-panel"><div className="panel-heading"><div><h2>अलीकडील शैक्षणिक नोंदी</h2><p>गृहपाठ आणि वर्गपाठ एकाच नजरेत</p></div><Icon name="book" /></div>{records.length ? <div className="activity-list">{records.map((record,i)=><div key={`${record.kind}-${record.id || i}`}><span className="icon-tile mint"><Icon name={record.icon} size={18} /></span><div><strong>{record.subject} · {record.kind}</strong><span>इयत्ता {record.className} · {record.date || 'दिनांक नोंदलेला नाही'}</span></div></div>)}</div> : <div className="compact-empty"><Icon name="book" size={28} /><h3>नव्या नोंदींची सुरुवात करा</h3><p>जतन केलेले गृहपाठ आणि वर्गपाठ येथे दिसतील.</p><button className="text-button" onClick={()=>onNavigate('Homework')}>गृहपाठ पान उघडा <Icon name="arrow" size={15} /></button></div>}</section></div>
+    <div className="secondary-metrics"><span>गृहपाठ <b>{homework.length}</b></span><span>वर्गपाठ <b>{classwork.length}</b></span><span>सहली <b>{readStored('erp_pro_trips',[]).length}</b></span><span>शिष्यवृत्ती <b>{readStored('erp_pro_scholarships',[]).length}</b></span><span>पालक सभा <b>{readStored('erp_pro_meetings',[]).length}</b></span></div>
+  </div>;
 }

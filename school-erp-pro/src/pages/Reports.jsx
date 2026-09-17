@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useState } from "react";
 import { localDate } from "../storage";
 
@@ -6,20 +7,20 @@ export default function Reports() {
   const [date, setDate] = useState(localDate());
 
   const generateReport = () => {
-    alert("हा नमुना preview आहे. वास्तविक डेटाचा Report Generator या React आवृत्तीत अद्याप उपलब्ध नाही.");
+    notify("हा नमुना preview आहे. वास्तविक डेटाचा Report Generator या React आवृत्तीत अद्याप उपलब्ध नाही.");
   };
 
   const sendWhatsApp = () => {
     const msg = `नमुना Report Preview: ${type}\nदिनांक: ${date}\nयात वास्तविक अहवालाचा डेटा जोडलेला नाही.`;
     const mobile = prompt("WhatsApp Mobile Number टाका");
     if (!mobile) return;
-    if (!/^(?:\+?91)?\d{10}$/.test(mobile.trim())) { alert("वैध 10 अंकी मोबाईल नंबर भरा"); return; }
+    if (!/^(?:\+?91)?\d{10}$/.test(mobile.trim())) { notify("वैध 10 अंकी मोबाईल नंबर भरा"); return; }
     window.open(`https://wa.me/91${mobile.slice(-10)}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   return (
     <div className="page">
-      <h2>📈 Reports Generator</h2>
+      <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>शालेय अहवाल</h2><p>अहवाल preview आणि print</p></div></div>
       <div className="form-grid">
         <select value={type} onChange={(e) => setType(e.target.value)}>
           <option>विद्यार्थी अहवाल</option>

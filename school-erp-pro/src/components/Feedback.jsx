@@ -2,7 +2,7 @@ import { Component, useEffect, useState } from 'react';
 import Icon from './Icon';
 
 export function notify(message) {
-  const type = /नाही|चुकी|भरा|तपासा|wrong|failed/i.test(message) ? 'error' : /save|जतन|यशस्वी/i.test(message) ? 'success' : 'info';
+  const type = /नाही|चुकी|भरा|तपासा|असावा|आधीच|wrong|failed/i.test(message) ? 'error' : /save|जतन|यशस्वी/i.test(message) ? 'success' : 'info';
   window.dispatchEvent(new CustomEvent('erp-feedback', { detail: { message, type, id: Date.now() } }));
 }
 

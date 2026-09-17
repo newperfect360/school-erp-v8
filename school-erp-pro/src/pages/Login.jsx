@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useState } from "react";
 
 export default function Login({ onLogin }) {
@@ -6,10 +7,10 @@ export default function Login({ onLogin }) {
 
   const login = () => {
     if (username === "admin" && password === "123456") {
-        alert("Login Successful");
+        notify("Login Successful");
         onLogin();
     } else {
-        alert("Wrong Username or Password");
+        notify("Wrong Username or Password");
     }
 };
 

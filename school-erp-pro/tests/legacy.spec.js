@@ -74,3 +74,31 @@ test('invalid restore preserves saved records and verification hash does not cra
   await expect(page.getByText('Record Not Found')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('remaining legacy forms persist records without executing entered markup', async ({ page }) => {
+  page.on('dialog', d => d.dismiss());
+  await page.goto('http://127.0.0.1:5174');
+  await page.evaluate(() => localStorage.setItem('v32_students', JSON.stringify([{id:'test',name:'Test Student',className:'5वी'}])));
+  await page.reload();
+  for (const [module,fields,button,table] of [
+    ['teachers',{tName:'Teacher',tMobile:'9999999999',tSubject:'Math'},'Save Teacher','teachersTable'],
+    ['homework',{hwSubject:'Math',hwHomework:'Test homework'},'Save Homework','homeworkTable'],
+    ['health',{heightVal:'145',weightVal:'40'},'Save Health','healthTable'],
+    ['distribution',{distQty:'1'},'Save','distributionTable'],
+    ['library',{bookName:'Test book',bookNo:'TEST-1'},'Save/Issue Book','libraryTable'],
+    ['committees',{memberName:'Test member'},'Save','committeesTable'],
+    ['transport',{busNo:'TEST-BUS',routeName:'Route',driverName:'Driver'},'Save','transportTable'],
+    ['mdm',{mdmCount:'20',mdmMenu:'Test meal'},'Save MDM','mdmTable'],
+  ]) {
+    await nav(page,module);
+    for (const [id,value] of Object.entries(fields)) await page.locator(`#${id}`).fill(value);
+    await page.locator(`#${module}`).getByRole('button',{name:button,exact:true}).click();
+    await expect(page.locator(`#${table} tr`)).toHaveCount(2);
+  }
+  await nav(page,'students');
+  await page.locator('#sName').fill('<img src=x onerror="window.injected=true">');
+  await page.locator('#sAdmission').fill('TEST-XSS');
+  await page.locator('#students').getByRole('button',{name:'Save Student',exact:true}).click();
+  await expect(page.locator('#studentTable img')).toHaveCount(0);
+  expect(await page.evaluate(()=>window.injected)).toBeUndefined();
+});

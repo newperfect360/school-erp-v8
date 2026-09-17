@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useState } from "react";
 import { readStored, useStoredState, localDate } from "../storage";
 
@@ -18,7 +19,7 @@ export default function OperationalModules({ module }) {
   const [form, setForm] = useState(() => Object.fromEntries(definition.fields.map((field) => [field, ""])));
   const [query, setQuery] = useState("");
   const save = () => {
-    if (!Object.values(form).some(Boolean)) { alert("किमान एक माहिती भरा"); return; }
+    if (!Object.values(form).some(Boolean)) { notify("किमान एक माहिती भरा"); return; }
     if (!setItems([...items, { id: crypto.randomUUID(), ...form, createdAt: localDate() }])) return;
     setForm(Object.fromEntries(definition.fields.map((field) => [field, ""])));
   };

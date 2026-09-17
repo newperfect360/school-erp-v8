@@ -1,0 +1,40 @@
+.absence-panel { margin-top: 24px; padding: 20px; border: 1px solid #dce3e8; border-radius: 16px; background: #f8fafb; }
+.absence-panel p { color: #536574; overflow-wrap: anywhere; }
+.absence-panel label, .contact-choice { display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
+.absence-panel input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
+.absence-settings { margin: 16px 0; padding: 14px; background: white; border-radius: 10px; }
+.absence-settings summary { cursor: pointer; font-weight: 600; margin-bottom: 12px; }
+.absence-settings label { margin: 12px 0; }
+.absence-panel textarea { width: 100%; min-height: 78px; box-sizing: border-box; }
+.absence-quick { min-width: 180px; display: grid; gap: 10px; }
+.attendance-table .absence-quick select { display: block; }
+.contact-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.contact-actions button, .contact-action { min-height: 44px; padding: 10px 13px; margin: 0; font-size: 13px; }
+.contact-action { display: inline-flex; align-items: center; justify-content: center; background: #e7f1ee; color: #155747; border: 1px solid #b9d8ce; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.contact-action.call { background: #164c75; color: white; border-color: #164c75; }
+.contact-action:focus-visible { outline: 3px solid #eeaa32; outline-offset: 2px; }
+.bulk-actions { margin: 18px 0; }
+.bulk-actions label { flex-direction: row; align-items: center; }
+.followup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.followup-card { min-width: 0; padding: 16px; border: 1px solid #dce3e8; border-radius: 12px; background: white; display: grid; gap: 14px; }
+.followup-heading { display: flex; gap: 10px; align-items: center; }
+.followup-heading img, .student-placeholder { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; background: #e7f1ee; display: grid; place-items: center; }
+.followup-heading div { display: grid; gap: 5px; overflow-wrap: anywhere; }
+.followup-heading span, .parent-number { font-size: 13px; }
+.contact-progress { margin: 0; font-size: 12px; display: grid; gap: 6px; }
+.contact-progress div { display: flex; justify-content: space-between; gap: 8px; }
+.contact-progress dd { margin: 0; text-align: right; }
+.communication-detail { margin-top: 20px; padding: 16px; border: 2px solid #b9d8ce; border-radius: 12px; background: white; }
+.history-entry, .batch-recipient, .audio-controls { display: grid; gap: 10px; padding: 14px 0; border-bottom: 1px solid #dce3e8; }
+.absence-panel select, .absence-panel input, .absence-quick select { max-width: 100%; min-width: 0; }
+@media (max-width: 600px) { .absence-panel { padding: 12px; } .followup-card { padding: 12px; } .absence-quick { min-width: 0; } .contact-action { flex-grow: 1; } }
+@media (max-width: 600px) {
+  .attendance-table thead { display: none; }
+  .attendance-table, .attendance-table tbody, .attendance-table tr, .attendance-table td { display: block; width: 100%; box-sizing: border-box; }
+  .attendance-table tr { padding: 10px; border-bottom: 2px solid #dce3e8; }
+  .attendance-table td { white-space: normal; border: 0; }
+  .attendance-table td:nth-child(1), .attendance-table td:nth-child(3), .attendance-table td:nth-child(4), .attendance-table td:nth-child(5), .attendance-table td:nth-child(6) { display: none; }
+  .attendance-table td:nth-child(2) { font-size: 16px; font-weight: 600; }
+  .attendance-table .attendance-buttons button { min-height: 44px; }
+}
+@media print { .absence-panel, .absence-quick { display: none !important; } }

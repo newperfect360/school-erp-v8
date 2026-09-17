@@ -1,7 +1,9 @@
+import { notify } from "../components/Feedback";
 import { useRef, useState } from "react";
 import { useStoredState } from "../storage";
 
 export default function Teachers() {
+  const [imageLoading, setImageLoading] = useState(false);
   const photoInput = useRef(null);
   const [teachers, setTeachers] = useStoredState("erp_pro_teachers", []);
   const [form, setForm] = useState({
@@ -19,9 +21,11 @@ export default function Teachers() {
 
     if (name === "photo") {
       if (!files?.[0]) return;
-      if (!files[0].type.startsWith("image/") || files[0].size > 2 * 1024 * 1024) { alert("2 MB पेक्षा लहान image निवडा"); return; }
+      if (!files[0].type.startsWith("image/") || files[0].size > 2 * 1024 * 1024) { notify("2 MB पेक्षा लहान image निवडा"); return; }
+      setImageLoading(true);
       const reader = new FileReader();
-      reader.onload = () => setForm(current => ({ ...current, photo: reader.result }));
+      reader.onerror = () => { setImageLoading(false); notify("फोटो वाचता आला नाही. पुन्हा निवडा."); };
+      reader.onload = () => { setForm(current => ({ ...current, photo: reader.result })); setImageLoading(false); };
       reader.readAsDataURL(files[0]);
     } else {
       setForm({ ...form, [name]: value });
@@ -29,13 +33,14 @@ export default function Teachers() {
   };
 
   const saveTeacher = () => {
+    if (imageLoading) { notify("फोटो तयार होत आहे. क्षणभर थांबा."); return; }
     if (!form.name.trim() || !form.mobile || !form.subject.trim()) {
-      alert("शिक्षक नाव, मोबाईल आणि विषय भरा");
+      notify("शिक्षक नाव, मोबाईल आणि विषय भरा");
       return;
     }
 
-    if (!/^\d{10}$/.test(form.mobile)) { alert("मोबाईल नंबर 10 अंकांचा असावा"); return; }
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { alert("Email चुकीचा आहे"); return; }
+    if (!/^\d{10}$/.test(form.mobile)) { notify("मोबाईल नंबर 10 अंकांचा असावा"); return; }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { notify("Email चुकीचा आहे"); return; }
     if (!setTeachers([...teachers, { id: crypto.randomUUID(), ...form }])) return;
 
     setForm({
@@ -48,59 +53,38 @@ export default function Teachers() {
       photo: "",
     });
 
-    alert("शिक्षक Save झाले");
+    notify("शिक्षक Save झाले");
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>👨‍🏫 Teacher Management</h2>
+    <div className="page module-page">
+      <div className="module-heading"><div><span className="eyebrow">TEACHER DIRECTORY</span><h2>शिक्षक व्यवस्थापन</h2><p>शिक्षकांची माहिती, विषय आणि संपर्क नोंदी</p></div><div className="module-count">{teachers.length}<span>एकूण नोंदी</span></div></div>
 
-      <table>
-        <tbody>
-          <tr>
-            <td>शिक्षक पूर्ण नाव</td>
-            <td><input name="name" value={form.name} onChange={handleChange} /></td>
-          </tr>
+      <section className="workflow-panel"><div className="panel-title"><h3>नवीन नोंद</h3><span>माहिती भरून खालील Save बटण वापरा</span></div><div className="form-grid">
 
-          <tr>
-            <td>पद</td>
-            <td><input name="designation" value={form.designation} onChange={handleChange} /></td>
-          </tr>
+          <label>शिक्षक पूर्ण नाव<input name="name" value={form.name} onChange={handleChange} /></label>
 
-          <tr>
-            <td>विषय</td>
-            <td><input name="subject" value={form.subject} onChange={handleChange} /></td>
-          </tr>
+          <label>पद<input name="designation" value={form.designation} onChange={handleChange} /></label>
 
-          <tr>
-            <td>मोबाईल</td>
-            <td><input name="mobile" value={form.mobile} onChange={handleChange} /></td>
-          </tr>
+          <label>विषय<input name="subject" value={form.subject} onChange={handleChange} /></label>
 
-          <tr>
-            <td>Email</td>
-            <td><input name="email" value={form.email} onChange={handleChange} /></td>
-          </tr>
+          <label>मोबाईल<input name="mobile" value={form.mobile} onChange={handleChange} /></label>
 
-          <tr>
-            <td>पत्ता</td>
-            <td><input name="address" value={form.address} onChange={handleChange} /></td>
-          </tr>
+          <label>Email<input name="email" value={form.email} onChange={handleChange} /></label>
 
-          <tr>
-            <td>फोटो</td>
-            <td><input ref={photoInput} type="file" name="photo" accept="image/*" onChange={handleChange} /></td>
-          </tr>
-        </tbody>
-      </table>
+          <label>पत्ता<input name="address" value={form.address} onChange={handleChange} /></label>
 
-      <br />
-      <button onClick={saveTeacher}>Save Teacher</button>
+          <label>फोटो<input ref={photoInput} type="file" name="photo" accept="image/*" onChange={handleChange} /></label>
 
-      <br /><br />
-      <h3>Saved Teachers</h3>
+      </div></section>
 
-      <table border="1" cellPadding="8" style={{ width: "100%" }}>
+
+      <button disabled={imageLoading} onClick={saveTeacher}>Save Teacher</button>
+
+
+      <h3 className="list-heading">जतन केलेल्या नोंदी <span>{teachers.length}</span></h3>{teachers.length === 0 && <div className="empty-state"><strong>अद्याप नोंदी नाहीत</strong><span>वरील form वापरून पहिली नोंद तयार करा.</span></div>}
+
+      <div className="table-scroll"><table>
         <thead>
           <tr>
             <th>फोटो</th>
@@ -126,7 +110,7 @@ export default function Teachers() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   );
 }

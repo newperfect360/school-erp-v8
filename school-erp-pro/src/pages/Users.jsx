@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useState } from "react";
 
 export default function Users() {
@@ -109,7 +110,7 @@ export default function Users() {
       <br />
       <button onClick={() => {
         if (!form.name || !form.username || !form.password) {
-          alert("कृपया नाव, username आणि password भरा");
+          notify("कृपया नाव, username आणि password भरा");
           return;
         }
 
@@ -130,7 +131,7 @@ export default function Users() {
           email: ""
         });
 
-        alert("User Save झाला");
+        notify("User Save झाला");
       }}>
         Save User
       </button>

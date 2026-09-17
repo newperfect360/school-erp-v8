@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useState } from "react";
 
 export default function WhatsAppSettings() {
@@ -21,12 +22,12 @@ export default function WhatsAppSettings() {
 
   const saveSettings = () => {
     localStorage.setItem("whatsappSettings", JSON.stringify(form));
-    alert("WhatsApp API Settings Save झाले.");
+    notify("WhatsApp API Settings Save झाले.");
   };
 
   const testWhatsApp = () => {
     if (!form.testMobile || form.testMobile.length < 10) {
-      alert("मोबाईल नंबर चुकीचा आहे.");
+      notify("मोबाईल नंबर चुकीचा आहे.");
       return;
     }
 

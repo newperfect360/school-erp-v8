@@ -1,3 +1,4 @@
+import { notify } from "./components/Feedback";
 import { useRef, useState } from "react";
 
 export function readStored(key, fallback) {
@@ -26,7 +27,7 @@ export function writeStored(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch {
-    alert("माहिती Save झाली नाही. Browser storage उपलब्ध नाही, भरलेले आहे किंवा जुना डेटा वाचता येत नाही. जुना डेटा बदललेला नाही.");
+    notify("माहिती Save झाली नाही. Browser storage उपलब्ध नाही, भरलेले आहे किंवा जुना डेटा वाचता येत नाही. जुना डेटा बदललेला नाही.");
     return false;
   }
 }

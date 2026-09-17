@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useMemo, useState } from "react";
 import { createBackup, recordAudit } from "../services/audit";
 import { readStored, useStoredState } from "../storage";
@@ -29,8 +30,8 @@ function BackupPanel() {
         if (!backup?.data || typeof backup.data !== "object" || !window.confirm("हा backup local dataमध्ये restore करायचा आहे का?")) return;
         Object.entries(backup.data).forEach(([key, value]) => localStorage.setItem(key, value));
         recordAudit("Backup restore", { version: backup.version || "unknown" });
-        alert("Backup restore झाला. पान reload करा.");
-      } catch { alert("Backup file वाचता आली नाही."); }
+        notify("Backup restore झाला. पान reload करा.");
+      } catch { notify("Backup file वाचता आली नाही."); }
     };
     reader.readAsText(file);
   };
@@ -53,7 +54,7 @@ export default function SchoolOperations({ module = "Admissions" }) {
   const visibleItems = useMemo(() => items.filter((item) => Object.values(item).join(" ").toLowerCase().includes(query.toLowerCase())), [items, query]);
 
   const save = () => {
-    if (definition.fields.slice(0, 2).some((field) => !form[field]?.trim())) { alert("पहिली आवश्यक माहिती भरा"); return; }
+    if (definition.fields.slice(0, 2).some((field) => !form[field]?.trim())) { notify("पहिली आवश्यक माहिती भरा"); return; }
     const item = { id: crypto.randomUUID(), ...form, createdAt: new Date().toISOString() };
     if (!setItems([...items, item])) return;
     recordAudit(`${definition.title} नोंद तयार`, { id: item.id });

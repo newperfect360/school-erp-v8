@@ -1,3 +1,4 @@
+import { notify } from "../components/Feedback";
 import { useState } from "react";
 import { readStored, useStoredState, localDate } from "../storage";
 
@@ -13,7 +14,7 @@ export default function Trips() {
   const candidates = students.filter((student) => [student.name, student.className, student.grNo].join(" ").toLowerCase().includes(search.toLowerCase()));
 
   const saveTrip = () => {
-    if (!form.name.trim() || !form.destination.trim() || !form.startDate) { alert("सहल नाव, ठिकाण आणि प्रारंभ दिनांक भरा"); return; }
+    if (!form.name.trim() || !form.destination.trim() || !form.startDate) { notify("सहल नाव, ठिकाण आणि प्रारंभ दिनांक भरा"); return; }
     const participants = students.filter((student) => selected.includes(student.id)).map((student) => ({ studentId: student.id, consent: "प्रलंबित", payment: "प्रलंबित", boarding: "नोंद नाही" }));
     const trip = { id: crypto.randomUUID(), ...form, participants, status: "नियोजित", createdAt: new Date().toISOString() };
     if (!setTrips([...trips, trip])) return;
