@@ -1,0 +1,4 @@
+import fs from 'node:fs';const edit=(p,f)=>fs.writeFileSync(p,f(fs.readFileSync(p,'utf8')));
+edit('tests/stability.spec.js',s=>s.replace('getByLabel("Show archived students")','getByLabel("Show inactive / archived students")'));
+edit('src/backend/contracts.js',s=>s.replace('"resultPublications"]','"resultPublications", "academicHistory", "studentMovements", "longAbsenceSettings", "longAbsenceAlerts", "longAbsenceFollowups"]'));
+edit('src/pages/StudentLifecycle.jsx',s=>s.replace("const selected=students.filter(s=>ids.includes(s.id));","const selected=students.filter(s=>ids.includes(s.id));\n const movementRows=movements.filter(h=>!ids.length||ids.includes(h.studentId));").replace('<h2>Academic and movement history</h2>','<h2>Academic and movement history</h2><button onClick={()=>exportRows(movementRows,"student-movements.xlsx")}>Export movement Excel</button><button onClick={()=>exportRows(movementRows,"student-movements.csv")}>Export movement CSV</button>'));

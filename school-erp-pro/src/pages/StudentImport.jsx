@@ -1,3 +1,6 @@
+import {enrollment,academicSnapshot} from '../services/studentLifecycle';
+import {suggestMarathiName} from "../services/bilingualStudent";
+import {normalizeStudentRow} from "../services/excel";
 import { useLanguage } from "../design/language";
 import { useState } from "react";
 import { readStored, commitStoredBatch } from "../storage";
@@ -37,6 +40,8 @@ export default function StudentImport({ onDone, onBack }) {
       const history = { id, fileName: file.name, importedAt: timestamp, successCount: change.added, updatedCount: change.updated, skippedCount: change.skipped, totalRows: file.rows.length, mode };
       commitStoredBatch({
         erp_pro_students: change.students,
+        erp_pro_student_movements:[...readStored('erp_pro_student_movements',[]),...change.students.flatMap(s=>{const old=review.existing.find(p=>p.id===s.id);if(old&&JSON.stringify(enrollment(old))===JSON.stringify(enrollment(s)))return [];return [{id:crypto.randomUUID(),studentId:s.id,studentName:s.name,grNo:s.grNo,action:old?'Class Changed (reviewed Excel update)':'Added',type:old?'Class Changed':'Added',oldValue:old?enrollment(old):null,newValue:enrollment(s),reason:'Reviewed Excel import '+file.name,actor:'local-review',createdAt:timestamp}]})],
+        erp_pro_academic_history:[...readStored('erp_pro_academic_history',[]),...review.existing.flatMap(old=>{const s=change.students.find(p=>p.id===old.id);return s&&JSON.stringify(enrollment(old))!==JSON.stringify(enrollment(s))?[{id:crypto.randomUUID(),...academicSnapshot(old,readStored('erp_pro_results',[]),readStored('erp_pro_attendance',{}),'Reviewed Excel update',timestamp.slice(0,10))}]:[]})],
         erp_pro_import_history: [...readStored("erp_pro_import_history", []), history],
         erp_pro_audit: [...readStored("erp_pro_audit", []), { id, action: "Reviewed student Excel import", date: timestamp.slice(0, 10), time: timestamp.slice(11, 19), user: "local-review", details: history }],
       }, { erp_pro_students: review.source });
@@ -52,7 +57,7 @@ export default function StudentImport({ onDone, onBack }) {
     <section className="school-panel workflow-panel"><div className="import-actions">
       <button className="school-button secondary" onClick={() => downloadStudentTemplate(columns)}>{t("Download Student Excel Template")}</button>
       <label className="school-button secondary">{t("Upload Excel")}<input aria-label="Upload Excel" type="file" accept=".xlsx,.xls,.csv" onChange={upload} disabled={loading} /></label>
-      <button className="school-button secondary" onClick={() => exportStudents(readStored("erp_pro_students", []))}>{t("Export Students")}</button>
+      <button disabled={!file} onClick={()=>{const next={...overrides};for(const [index,row] of (file?.rows||[]).entries()){const student=normalizeStudentRow(row,file.mapping),name=suggestMarathiName(student.name);if(name&&!student.student_name_mr&&!next[index]?.student_name_mr)next[index]={...next[index],student_name_mr:name}}setOverrides(next);invalidate();notify("Limited offline suggestions filled for known names. Validate and manually review every Marathi spelling. Unknown names need manual entry.")}}>Suggest Marathi names (review required)</button><button className="school-button secondary" onClick={() => exportStudents(readStored("erp_pro_students", []))}>{t("Export Students")}</button>
     </div><p>.xlsx / .xls / .csv · first worksheet · up to 5 MB / 5,000 rows. Dates: YYYY-MM-DD or DD/MM/YYYY.</p>
     <details><summary>Configure template columns</summary><div className="check-grid">{studentColumns.map(([label, field]) => <label key={field}><input type="checkbox" checked={columns.includes(field)} disabled={["name", "grNo", "className"].includes(field)} onChange={e => setColumns(e.target.checked ? [...columns, field] : columns.filter(f => f !== field))} />{label}</label>)}</div></details>
     <label>{t("Import operation")}<select aria-label="Import operation" value={mode} onChange={e => { setMode(e.target.value); invalidate(); setChoices({}); }}><option value="create">Import new students + review duplicates</option><option value="update">Update Existing Students from Excel</option></select></label>

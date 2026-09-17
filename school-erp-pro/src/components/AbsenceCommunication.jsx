@@ -1,3 +1,6 @@
+import {lifecycleActive} from '../services/studentLifecycle';
+import AudioRecorder from "./AudioRecorder";
+import {readAsset} from "../services/assets";
 import { useEffect, useRef, useState } from "react";
 import { readStored, useStoredState } from "../storage";
 import { notify } from "./Feedback";
@@ -5,7 +8,8 @@ import { absenceMessage, communicationKeys, communicationLink, communicationReco
 import "./AbsenceCommunication.css";
 
 export function useAbsenceCommunication(date, students, actor = { id: "admin", name: "Administrator", role: "admin" }) {
-  const [history, setHistory] = useStoredState(communicationKeys.history, []);
+  const [history, setHistory, reloadHistory] = useStoredState(communicationKeys.history, []);
+  useEffect(()=>{window.addEventListener('communication-history-changed',reloadHistory);return()=>window.removeEventListener('communication-history-changed',reloadHistory)},[reloadHistory]);
   const [followups, setFollowups] = useStoredState(communicationKeys.followups, {});
   const [settings, setSettings] = useStoredState(communicationKeys.settings, defaultAbsenceSettings);
   const [contacts, setContacts] = useState({});
@@ -38,7 +42,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
     const master = readStored("erp_pro_students", []).find(item => String(item.id) === String(s.id));
     const contact = master && parentContacts(master).find(c => c.id === contactId);
     const day = readStored("erp_pro_attendance", {})[date];
-    if (!allowed || !master || day?.[s.id] !== "Absent" || !contact?.mobile) {
+    if (!allowed || !master || !lifecycleActive(master) || day?.[s.id] !== "Absent" || !contact?.mobile) {
       notify("A valid parent contact and saved Absent attendance are required. Check Student Master.");
       return null;
     }
@@ -56,6 +60,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
   };
 
   const initiate = (event, s, channel) => {
+    const configured=readStored("erp_pro_message_settings",{}).channels; if(configured&&!configured.some(c=>c.id===channel&&c.enabled)){event.preventDefault();notify("This channel is disabled in Automation Settings.");return;}
     const resolved = resolve(s);
     if (!resolved) { event.preventDefault(); return; }
     const { master, contact } = resolved;
@@ -66,6 +71,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
   };
 
   const shareAudio = async s => {
+    const channels=readStored("erp_pro_message_settings",{}).channels;if(channels&&!channels.some(c=>c.id==="audio"&&c.enabled))return notify("Audio channel is disabled in Automation Settings.");
     const resolved = resolve(s);
     if (!resolved || !audioFile || sharing) return;
     if (!navigator.canShare?.({ files: [audioFile] }) || !navigator.share) {
@@ -108,7 +114,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
     const file = e.target.files?.[0];
     if (file && (!file.type.startsWith("audio/") || file.size > 10 * 1024 * 1024 || !file.size)) { setAudioFile(null); e.target.value = ""; notify("Choose a non-empty audio file up to 10 MB."); return; }
     setAudioFile(file || null);
-  }} /></label>{audioFile && <span>{audioFile.name}</span>}<p>Choose the intended parent in the device share sheet. Audio sharing cannot preselect or verify the recipient.</p>{s && <button disabled={!audioFile || sharing || !contactFor(s)?.mobile} onClick={() => shareAudio(s)}>Send Audio Message</button>}{audioFile && <button onClick={() => { const url = URL.createObjectURL(audioFile); const a = document.createElement("a"); a.href = url; a.download = audioFile.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download audio</button>}</div>;
+  }} /></label><AudioRecorder onRecorded={async asset=>{const saved=await readAsset(asset.id);if(saved)setAudioFile(new File([saved.blob],asset.name,{type:asset.type}))}}/>{audioFile && <span>{audioFile.name}</span>}<p>Choose the intended parent in the device share sheet. Audio sharing cannot preselect or verify the recipient.</p>{s && <button disabled={!audioFile || sharing || !contactFor(s)?.mobile} onClick={() => shareAudio(s)}>Send Audio Message</button>}{audioFile && <button onClick={() => { const url = URL.createObjectURL(audioFile); const a = document.createElement("a"); a.href = url; a.download = audioFile.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download audio</button>}</div>;
   const detailStudent = details?.date === date && absent.find(s => String(s.id) === String(details.id));
   const batchStudents = batch?.date === date ? absent.filter(s => batch.ids.includes(String(s.id))) : [];
 
@@ -138,7 +144,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
     {detailStudent && <section ref={detailsRef} tabIndex={-1} className="communication-detail" aria-label="Communication history"><h4>{detailStudent.name} — Communication History</h4><button onClick={() => setDetails(null)}>Close details</button>{contactSelector(detailStudent)}<p>{absenceMessage(detailStudent, date, settings)}</p>{audioControls(detailStudent)}
       {!history.some(h => String(h.studentId) === String(detailStudent.id)) && <p>No communication history yet.</p>}
       {history.filter(h => String(h.studentId) === String(detailStudent.id)).slice().reverse().map(h => <article className="history-entry" key={h.id}><strong>{h.channel} · {h.status}</strong><p>{h.parentName} · {h.parentMobile} · {h.contactType}</p><p>By {h.initiatedBy} · {new Date(h.initiatedAt).toLocaleString()} · Attendance {h.attendanceDate}{h.callType && ` · ${h.callType}`}</p>{h.message && <p>{h.message}</p>}{h.audioName && <p>{h.audioName}</p>}{h.channel === "call" && <label>Call remark<input aria-label={`Call remark ${h.id}`} list="call-remark-options" value={h.remark} maxLength={1000} onChange={e => setHistory(current => current.map(item => item.id === h.id ? { ...item, remark: e.target.value } : item))} /></label>}</article>)}
-      <datalist id="call-remark-options">{["Parent informed", "No answer", "Number busy", "Call back requested", "Wrong number"].map(remark => <option key={remark} value={remark} />)}</datalist>
+      <datalist id="call-remark-options">{["Parent informed", "No answer", "Number busy", "Call back requested", "Wrong number", "Medical reason", "Other"].map(remark => <option key={remark} value={remark} />)}</datalist>
     </section>}
   </section>;
   return { quickActions, panel, prepare };

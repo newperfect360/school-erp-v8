@@ -63,12 +63,13 @@ test('legacy navigation, student import preserves data, attendance, results, fee
 
 test('invalid restore preserves saved records and verification hash does not crash', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  page.on('dialog', d => d.dismiss());
   await page.goto('http://127.0.0.1:5174');
   await page.evaluate(() => localStorage.setItem('v32_students', JSON.stringify([{ id: 'keep', name: 'Preserved' }])));
   await nav(page, 'cloud');
   await page.locator('#restoreFile').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"D":{"students":null}}') });
+  const dismissed = page.waitForEvent('dialog').then(dialog => dialog.dismiss());
   await page.getByRole('button', { name: 'Restore JSON', exact: true }).click();
+  await dismissed;
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('v32_students'))[0].id)).toBe('keep');
   await page.goto('http://127.0.0.1:5174/#verify-student=%E0');
   await expect(page.getByText('Record Not Found')).toBeVisible();

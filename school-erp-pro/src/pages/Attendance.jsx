@@ -1,4 +1,6 @@
 import { notify } from "../components/Feedback";
+import PresentCommunication from "../components/PresentCommunication";
+import {queueMessages} from "../services/messageStore";
 import { useState } from "react";
 import { useAbsenceCommunication } from "../components/AbsenceCommunication";
 import { localDate, readStored, useStoredState } from "../storage";
@@ -30,15 +32,18 @@ export default function Attendance({ initialClass = "", initialDivision = "", in
   const communication = useAbsenceCommunication(date, visibleStudents);
   const summary = attendanceSummary(visibleStudents, attendance[date]);
   const updateStatus = (id, status) => {
+    if(!readStored("erp_pro_students",[]).some(s=>s.id===id&&isActiveStudent(s)))return notify("Student is no longer enrolled. Reopen Attendance.");
     if (!date) { notify(t("Choose an attendance date.", "दिनांक निवडा.")); return; }
-    if (setAttendance({ ...attendance, [date]: { ...attendance[date], [id]: status } }) && status === "Absent" && attendance[date]?.[id] !== "Absent") communication.prepare([id]);
+    if (setAttendance({ ...attendance, [date]: { ...attendance[date], [id]: status } })) {if(status === "Absent" && attendance[date]?.[id] !== "Absent") communication.prepare([id]);try{queueMessages([{type:status,studentId:id,key:`attendance:${date}:${id}:${status}`,details:{Date:date}}])}catch(e){notify(e.message)}}
   };
   const markVisiblePresent = () => {
+    if(visibleStudents.some(s=>!readStored("erp_pro_students",[]).some(m=>m.id===s.id&&isActiveStudent(m))))return notify("Student enrollment changed. Reopen Attendance.");
     if (!date) { notify(t("Choose an attendance date.", "दिनांक निवडा.")); return; }
     if (visibleStudents.some(s => attendance[date]?.[s.id] && attendance[date][s.id] !== "Present") && !confirm(t("Replace attendance for all visible students with Present?", "दिसणाऱ्या सर्व विद्यार्थ्यांची नोंद उपस्थित अशी बदलायची आहे का?"))) return;
     if (setAttendance({ ...attendance, [date]: { ...attendance[date], ...Object.fromEntries(visibleStudents.map(s => [s.id, "Present"])) } })) notify(t("Visible students marked present.", "दिसणारे विद्यार्थी उपस्थित नोंदवले."));
   };
   const saveAttendance = () => {
+    if(visibleStudents.some(s=>!readStored("erp_pro_students",[]).some(m=>m.id===s.id&&isActiveStudent(m))))return notify("Student enrollment changed. Reopen Attendance.");
     if (!date) { notify(t("Choose an attendance date.", "दिनांक निवडा.")); return; }
     if (setAttendance({ ...attendance, [date]: { ...attendance[date], ...Object.fromEntries(visibleStudents.map(s => [s.id, s.status])) } })) notify(t("Attendance saved for the visible students.", "दिसणाऱ्या विद्यार्थ्यांची उपस्थिती जतन झाली."));
   };
@@ -53,7 +58,7 @@ export default function Attendance({ initialClass = "", initialDivision = "", in
       {visibleStudents.length ? <div className="table-scroll register-table-wrap"><table className="attendance-table academic-register"><thead><tr><th>{t("Student", "विद्यार्थी")}</th><th>{t("Class / GR", "इयत्ता / GR")}</th><th>{t("Attendance", "उपस्थिती")}</th><th>{t("Parent communication", "पालक संपर्क")}</th></tr></thead><tbody>{visibleStudents.map(s => <tr key={s.id} data-student-id={s.id} className={s.status === "Absent" ? "row-absent" : ""}>
         <td><div className="register-student"><Avatar name={s.name} photo={s.photo} /><div><strong>{studentDisplayName(s, language)}</strong><span>{t("Roll no.", "हजेरी क्र.")} {s.rollNo || "—"}<span className="mobile-student-class"> · {s.className}/{s.division} · GR {s.grNo}</span></span></div></div></td><td><strong>{s.className} / {s.division || "—"}</strong><small className="cell-secondary">GR {s.grNo}</small></td>
         <td><div className="attendance-buttons">{[["Present", "present", "P"], ["Absent", "absent", "A"], ["Late", "late", "L"], ["Leave", "leave", "LV"]].map(([status, css, short]) => <button key={status} aria-label={`${statusLabels[status]} — ${s.name}`} title={statusLabels[status]} aria-pressed={attendance[date]?.[s.id] === status} className={`${attendance[date]?.[s.id] === status ? "status-selected " : ""}${css}`} onClick={() => updateStatus(s.id, status)}><span>{short}</span><small>{statusLabels[status]}</small></button>)}</div><select className="extended-status" aria-label={`Attendance for ${s.name}`} value={s.status} onChange={e => updateStatus(s.id, e.target.value)}>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select><span className="register-save-state">{attendance[date]?.[s.id] ? statusLabels[s.status] : t("Not yet recorded", "अद्याप नोंद नाही")}</span></td>
-        <td>{s.status === "Absent" ? communication.quickActions(s) : <span className="contact-not-needed"><Icon name="check" size={15} />{t("No absence follow-up", "अनुपस्थिती संपर्क नाही")}</span>}</td>
+        <td>{s.status === "Absent" ? communication.quickActions(s) : attendance[date]?.[s.id] === "Present" ? <PresentCommunication student={s} date={date} onNavigate={onNavigate}/> : <span className="contact-not-needed"><Icon name="check" size={15} />{t("No absence follow-up", "अनुपस्थिती संपर्क नाही")}</span>}</td>
       </tr>)}</tbody></table></div> : <EmptyState icon="users" title={roster.length ? t("No matching students", "संबंधित विद्यार्थी नाहीत") : t("A class begins with its students", "वर्गाची सुरुवात विद्यार्थ्यांपासून")} description={roster.length ? t("Try another class or clear your search.", "दुसरा वर्ग निवडा किंवा शोध बदला.") : t("Add or import students before taking attendance.", "उपस्थितीपूर्वी विद्यार्थ्यांची नोंद किंवा आयात करा.")} action={<button className="school-button secondary" onClick={() => roster.length ? (setClassFilter(""), setDivisionFilter(""), setQuery("")) : onNavigate?.("Students")}>{roster.length ? t("Clear filters", "फिल्टर काढा") : t("Open student directory", "विद्यार्थी सूची उघडा")}</button>} />}
       <div className="register-footer"><span><Icon name="shield" size={16} />{t("Parent contacts come directly from Student Master.", "पालक संपर्क विद्यार्थी मास्टरमधून घेतले जातात.")}</span><button className="school-button" disabled={!visibleStudents.length || !date} onClick={saveAttendance}><Icon name="check" size={17} />{t("Save register", "उपस्थिती जतन करा")}</button></div>
     </section>

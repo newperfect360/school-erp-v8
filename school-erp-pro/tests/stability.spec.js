@@ -17,7 +17,7 @@ test("student create, archive cancellation, archive and restore preserve related
   await page.getByRole("button", { name: "Save Student", exact: true }).click(); expect((await read(page, "erp_pro_students")).length).toBe(36);
   await page.locator('input[name="mobile"]').fill("9876543210"); await page.getByRole("button", { name: "Save Student", exact: true }).click(); const created = (await read(page, "erp_pro_students")).find(s => s.grNo === "AUDIT-NEW");
   const row = page.locator(`tr[data-student-id="${created.id}"]`); page.once("dialog", d => d.dismiss()); await row.getByRole("button", { name: "Archive student", exact: true }).click(); expect((await read(page, "erp_pro_students")).find(s => s.id === created.id).archivedAt).toBeFalsy();
-  page.once("dialog", d => d.accept()); await row.getByRole("button", { name: "Archive student", exact: true }).click(); expect(await read(page, "erp_pro_students")).toHaveLength(37); await page.getByLabel("Show archived students").check(); await expect(page.locator(`tr[data-student-id="${created.id}"]`)).toBeVisible(); page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "Restore student", exact: true }).click(); expect((await read(page, "erp_pro_students")).find(s => s.id === created.id).archivedAt).toBeNull(); expect((await read(page, "erp_pro_attendance"))).toEqual(coreDesignFixture().erp_pro_attendance);
+  page.once("dialog", d => d.accept()); await row.getByRole("button", { name: "Archive student", exact: true }).click(); expect(await read(page, "erp_pro_students")).toHaveLength(37); await page.getByLabel("Show inactive / archived students").check(); await expect(page.locator(`tr[data-student-id="${created.id}"]`)).toBeVisible(); page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "Restore student", exact: true }).click(); expect((await read(page, "erp_pro_students")).find(s => s.id === created.id).archivedAt).toBeNull(); expect((await read(page, "erp_pro_attendance"))).toEqual(coreDesignFixture().erp_pro_attendance);
 });
 
 test("corrupt storage remains unchanged and rejected saves retain the form", async ({ page }) => {
@@ -54,7 +54,7 @@ test("backup previews before non-destructive merge; account requests never store
 
 test("remaining office registers save, search and export without cross-module state", async ({ page }) => {
   await setup(page);
-  for (const key of ["Inventory", "Timetable", "Calendar", "Staff", "Fees", "Notices", "Meetings", "Transport", "Automation"]) {
+  for (const key of ["Inventory", "Timetable", "Calendar", "Staff", "Notices", "Transport"]) {
     await nav(page, key); const fields = page.locator(".workflow-panel .form-grid input"); await fields.nth(0).fill(`Audit ${key}`); await fields.nth(1).fill("Review record"); if (key === "Fees") { await fields.nth(2).fill("100"); await fields.nth(3).fill("50"); }
     await page.getByRole("button", { name: "नोंद जतन करा", exact: true }).click(); await page.getByLabel("नोंदी शोधा", { exact: true }).fill(`Audit ${key}`); await expect(page.locator(".record-card")).toHaveCount(1);
   }

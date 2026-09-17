@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 
 export const studentColumns = [
-  ["Sr No", "srNo"], ["Student Full Name", "name"], ["First Name", "firstName"], ["Middle Name", "middleName"], ["Last Name", "lastName"],
+  ["Sr No", "srNo"], ["Photo Number", "photoNumber"], ["Father Name Marathi", "father_name_mr"], ["Mother Name Marathi", "mother_name_mr"], ["Address Marathi", "address_mr"], ["Student Full Name", "name"], ["First Name", "firstName"], ["Middle Name", "middleName"], ["Last Name", "lastName"],
   ["Student Name Marathi", "student_name_mr"], ["Admission Number", "admissionNo"],
   ["Standard", "className"], ["Division", "division"], ["Roll Number", "rollNo"], ["GR Number", "grNo"], ["Date of Birth", "dob"],
   ["Gender", "gender"], ["Blood Group", "bloodGroup"], ["Admission Date", "admissionDate"], ["Academic Year", "academicYear"],

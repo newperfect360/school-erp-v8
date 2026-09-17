@@ -1,7 +1,8 @@
+import { bilingualStudent } from "./bilingualStudent.js";
 import { normalizeStudentRow } from "./excel.js";
 
 export const canonical = value => String(value ?? "").trim().normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ");
-export const updateFields = ["mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact", "address", "className", "division", "rollNo", "scholarship", "sports", "academicYear", "fatherName", "motherName", "guardianName", "alternateName", "healthNotes", "student_name_mr"];
+export const updateFields = ["photoNumber", "father_name_mr", "mother_name_mr", "address_mr","mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact", "address", "className", "division", "rollNo", "scholarship", "sports", "academicYear", "fatherName", "motherName", "guardianName", "alternateName", "healthNotes", "student_name_mr"];
 export function normalizeDate(value) {
   const input = String(value ?? "").trim();
   if (!input) return "";
@@ -70,10 +71,10 @@ export function applyStudentImport(existing, results, choices = {}) {
     if (result.errors.length || choice === "review") throw new Error(`Review or explicitly skip row ${result.rowNumber} before confirming.`);
     if (result.duplicate) {
       if (choice !== "update") throw new Error("Choose Update Existing or Skip for a duplicate.");
-      next = next.map(item => item.id === result.duplicate.id ? { ...item, ...Object.fromEntries(result.changes.map(change => [change.field, change.after])), updatedAt: new Date().toISOString() } : item);
+      next = next.map(item => item.id === result.duplicate.id ? bilingualStudent({ ...item, ...Object.fromEntries(result.changes.map(change => [change.field, change.after])), updatedAt: new Date().toISOString() }) : item);
       updated++;
     } else {
-      next.push({ ...result.student, student_name_en: result.student.name, id: crypto.randomUUID(), createdAt: new Date().toISOString() }); added++;
+      next.push(bilingualStudent({ ...result.student, student_name_en: result.student.name, id: crypto.randomUUID(), createdAt: new Date().toISOString() })); added++;
     }
   }
   return { students: next, added, updated, skipped };

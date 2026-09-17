@@ -15,6 +15,7 @@ export function reportRows(type, { className = "", division = "", month = "" } =
     return { ...studentRow(s), "Recorded Days": statuses.length, "Present / Duty Days": present, Absent: statuses.filter(status => status === "Absent").length, "Percentage of recorded days": statuses.length ? Math.round(present / statuses.length * 10000) / 100 : "Not recorded" };
   });
   if (type === "Trip Students") return readStored("erp_pro_trips", []).flatMap(trip => (trip.participants || []).filter(p => ids.has(p.studentId)).map(p => ({ Trip: trip.name, Date: trip.startDate, ...studentRow(students.find(s => s.id === p.studentId)), Consent: p.consent, Boarding: p.boarding })));
+  if (type === "Fees") return [...readStored("erp_pro_fee_ledger",[]).filter(allowed), ...(!className && !division ? readStored("erp_pro_fees",[]) : [])];
   if (type === "Sports Students") return readStored("erp_pro_sports_athletes", []).filter(allowed);
   if (type === "Scholarship Students") return readStored("erp_pro_scholarship_applications", []).filter(allowed);
   const keys = { Results: "erp_pro_results", Fees: "erp_pro_fees", Library: "erp_pro_library_loans", Homework: "erp_pro_homework", Communications: "erp_pro_absence_communications" };

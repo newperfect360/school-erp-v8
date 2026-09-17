@@ -1,4 +1,4 @@
-const types = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm"]);
+const types = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm", "audio/mp4"]);
 function database() { return new Promise((resolve, reject) => { const request = indexedDB.open("school-erp-assets-v1", 1); request.onupgradeneeded = () => request.result.createObjectStore("assets", { keyPath: "id" }); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(new Error("Local file storage is unavailable.")); }); }
 export async function saveAsset(file, audioOnly = false) {
   if (!types.has(file.type) || (audioOnly && !file.type.startsWith("audio/"))) throw new Error("Use PDF, JPG, PNG, WebP or a supported audio file.");

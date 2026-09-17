@@ -58,7 +58,7 @@ export function communicationRecord(student, contact, date, channel, actor, extr
     parentName: contact.name, parentMobile: contact.mobile, contactType: contact.id,
     initiatedBy: actor, initiatedAt: new Date().toISOString(), channel,
     callType: channel === "call" ? "Device dialer" : undefined,
-    status: channel === "call" ? "Dialer requested" : "Composer requested", remark: "",
+    status: extra.status || (channel === "call" ? "Dialer requested" : "Composer requested"), remark: extra.remark || "",
   };
 }
 

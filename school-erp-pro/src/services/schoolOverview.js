@@ -1,4 +1,5 @@
-export const isActiveStudent = student => !student.archivedAt;
+import {lifecycleActive} from './studentLifecycle.js';
+export const isActiveStudent = lifecycleActive;
 export const classKey = student => [student.className, student.division].filter(Boolean).join(" / ");
 
 export function attendanceSummary(students, day = {}) {
