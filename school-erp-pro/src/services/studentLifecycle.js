@@ -35,7 +35,7 @@ export function planMovement(student,change,{results=[],attendance={},date=new D
  }else if(['Archive','Delete Student'].includes(action)){
   if(student.archivedAt)throw Error('Student is already archived.');next={...next,statusBeforeArchive:student.status||'Active',status:'Archived',archivedAt:date};
  }else if(action==='Restore'){
-  if(!student.archivedAt)throw Error('Student is not archived.');next={...next,status:student.statusBeforeArchive||'Active',archivedAt:null};
+  if(!student.archivedAt)throw Error('Student is not archived.');next={...next,status:student.statusBeforeArchive||(student.status&&student.status!=='Archived'?student.status:'Active'),archivedAt:null};
  }else if(['School Left','Transferred','Passed Out','School Completed','TC/LC Issued'].includes(action)){
   if(['Passed Out','School Completed'].includes(action)&&Number(student.className)!==12)throw Error('School completion applies to standard 12.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(change.leavingDate||'')||!Number.isFinite(Date.parse(change.leavingDate))||new Date(change.leavingDate).toISOString().slice(0,10)!==change.leavingDate||change.leavingDate>day)throw Error('Choose a valid leaving date, no later than today.');
