@@ -16,6 +16,7 @@ export const navigationGroups = [
   ] },
   { en: "School office", mr: "शालेय कार्यालय", items: [
     ["Admissions", "Admissions & GR", "प्रवेश आणि GR", "file"], ["Certificates", "Certificates", "प्रमाणपत्र", "award"],
+    ["Formats", "School formats", "शालेय नमुने", "file"],
     ["IDCard", "Student ID cards", "ओळखपत्र", "badge", "ID Card"], ["Fees", "Fees", "शुल्क", "wallet"],
     ["Parents", "Parents", "पालक", "users"], ["Communications", "Parent communication", "संवाद नोंद", "message"],
     ["Notices", "Noticeboard", "सूचना", "bell"], ["Meetings", "Parent meetings", "पालक सभा", "users"],
@@ -23,6 +24,7 @@ export const navigationGroups = [
     ["Staff", "Staff directory", "कर्मचारी", "badge"], ["Reports", "Reports", "अहवाल", "chart", "Reports"],
   ] },
   { en: "Administration", mr: "प्रशासन", items: [
+    ["AccessSetup", "Teacher accounts & roles", "शिक्षक खाते व भूमिका", "shield"],
     ["Automation", "Automation rules", "स्वयंचलित नियम", "spark"], ["Backup", "Backup & audit", "Backup आणि Audit", "shield"],
     ["Settings", "School settings", "सेटिंग्ज", "settings", "Settings"],
   ] },

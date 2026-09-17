@@ -10,7 +10,8 @@ export function Avatar({ name = "", photo, size = "normal", tone = "blue" }) {
 }
 
 export function PageHeading({ eyebrow, title, description, children }) {
-  return <div className="academic-heading"><div>{eyebrow && <span className="academic-eyebrow">{eyebrow}</span>}<h1>{title}</h1>{description && <p>{description}</p>}</div>{children && <div className="heading-actions">{children}</div>}</div>;
+  const { t } = useLanguage();
+  return <div className="academic-heading"><div>{eyebrow && <span className="academic-eyebrow">{t(eyebrow)}</span>}<h1>{t(title)}</h1>{description && <p>{t(description)}</p>}</div>{children && <div className="heading-actions">{children}</div>}</div>;
 }
 
 export function Panel({ title, subtitle, action, children, className = "" }) {

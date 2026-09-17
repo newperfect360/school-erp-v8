@@ -1,0 +1,43 @@
+.import-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:12px 0; }
+.import-actions label { display:flex; gap:8px; align-items:center; }
+.check-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; padding:18px 0; }
+.check-grid label,.review-ack { display:flex; align-items:center; gap:10px; }
+.check-grid input,.review-ack input { width:auto!important; flex-shrink:0; }
+.review-ack { margin:20px 0; }
+.import-invalid { background:#fff0eb!important; }
+.import-page details { overflow-wrap:anywhere; }
+.import-page td { min-width:140px; vertical-align:top; }
+.import-page td input { max-width:200px; }
+.import-page .mapping-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin:16px 0; }
+.format-preview { width:100%; min-height:650px; border:1px solid #d6dfe5; border-radius:12px; background:white; }
+.format-editor { width:100%; min-height:220px; font-family:monospace; }
+.domain-toolbar { display:flex; gap:12px; flex-wrap:wrap; align-items:end; margin:16px 0; }
+.domain-toolbar label { min-width:140px; flex:1; }
+.domain-toolbar input,.domain-toolbar select { width:100%; }
+.module-page .form-grid label,.workflow-panel .form-grid label { display:flex; flex-direction:column; gap:7px; font-size:13px; font-weight:600; }
+.workflow-panel button { margin:8px 8px 8px 0; }
+.audit-badge { background:#fff1d8; color:#705120; border-radius:6px; padding:6px 10px; font-size:12px; }
+.module-page,.core-page,.workflow-panel,.school-panel { min-width:0; }
+.design-system .school-office-desk { display:flex; align-items:center; gap:12px; padding:16px 20px; margin-bottom:24px; border:1px solid #e3d8c5; border-radius:12px; background:#fffaf0; }
+.design-system .school-office-desk>div { margin-right:auto; display:grid; gap:5px; }
+.design-system .school-office-desk button { display:flex; align-items:center; gap:9px; color:#253e58; background:#fff; border:1px solid #e4dfd3; padding:12px 14px; font-size:12px; }
+.design-system .school-welcome { background:#203b54; border:1px solid #203b54; box-shadow:0 8px 28px #203b5412; }
+.design-system .school-welcome h2,.design-system .school-welcome h2 em { color:#fff4db; }
+.design-system .school-welcome p,.design-system .school-welcome .welcome-kicker { color:#c9d7e2; }
+.design-system .school-welcome .school-link { color:#f0d59e; }
+.design-system .school-welcome .school-button { background:#e9c887; color:#203b54; border-color:#e9c887; }
+.design-system .sidebar { background:#fcfbf8; border-right:1px solid #e1e5e8; }
+.design-system .brand-lockup strong { color:#203b54; }
+.design-system .brand-lockup>div>span,.design-system .sidebar-section-label { color:#728193; }
+.design-system .sidebar-school { border-color:#e0e5e9; background:#f0f4f7; }
+.design-system .sidebar-school span { color:#30475f; }
+.design-system .sidebar-school small { color:#647a8c; }
+.design-system .menu-btn { color:#50647a; }
+.design-system .menu-btn:hover { color:#203b54; background:#edf1f4; }
+.design-system .menu-btn.active { color:#fff8e9; background:#203b54; }
+.design-system .sidebar-footer { border-color:#dce3e9; color:#203b54; }
+.design-system .sidebar-footer strong { color:#203b54; }
+.design-system .local-review-note { font-size:10px; color:#75582e; border-left:3px solid #cba66c; padding:9px 12px; background:#fff9ed; margin-bottom:20px; }
+.design-system .academic-login-main { background:linear-gradient(150deg,#fffefb,#f1f5f8); }
+@media(max-width:1000px) { .design-system .school-office-desk { flex-wrap:wrap; } .design-system .school-office-desk>div { flex-basis:100%; } }
+@media(max-width:640px) { .import-actions { align-items:stretch; flex-direction:column; } .import-actions>* { max-width:100%; } .import-actions input[type=file] { max-width:200px; } .form-grid { grid-template-columns:1fr!important; } .domain-toolbar>* { max-width:100%; } }

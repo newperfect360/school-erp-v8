@@ -1,54 +1,18 @@
-import { notify } from "../components/Feedback";
+import { useLanguage } from "../design/language";
 import { useState } from "react";
-import { useStoredState } from "../storage";
+import { localDate, useStoredState } from "../storage";
+import { saveAsset } from "../services/assets";
+import AssetLink from "../components/AssetLink";
+import { PageHeading, EmptyState } from "../design/SchoolUI";
+import { notify } from "../components/Feedback";
+import { exportRows } from "../services/excel";
 
-export default function Homework() {
-  const [items, setItems] = useStoredState("erp_pro_homework", []);
-  const [form, setForm] = useState({ date: "", className: "", division: "", subject: "", teacher: "", homework: "", dueDate: "", mobile: "", attachment: "" });
-
-  const save = () => {
-    if (!form.className.trim() || !form.subject.trim() || !form.homework.trim() || !form.date) {
-      notify("इयत्ता, विषय आणि गृहपाठ भरा");
-      return;
-    }
-    if (!setItems([...items, { id: crypto.randomUUID(), ...form }])) return;
-    setForm({ date: "", className: "", division: "", subject: "", teacher: "", homework: "", dueDate: "", mobile: "", attachment: "" });
-  };
-
-  const sendWhatsApp = (h) => {
-    const msg = `गृहपाठ सूचना\nदिनांक: ${h.date}\nइयत्ता: ${h.className}\nविषय: ${h.subject}\nगृहपाठ: ${h.homework}\n- शिक्षक: ${h.teacher}`;
-    if (!/^(?:\+?91)?\d{10}$/.test(h.mobile.trim())) { notify("वैध 10 अंकी मोबाईल नंबर भरा"); return; }
-    window.open(`https://wa.me/91${h.mobile.slice(-10)}?text=${encodeURIComponent(msg)}`, "_blank");
-  };
-
-  return (
-    <div className="page">
-      <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>गृहपाठ</h2><p>वर्गासाठी दिलेला गृहपाठ आणि पालक संवाद</p></div></div>
-      <section className="workflow-panel"><div className="form-grid">
-        <label>दिनांक<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-        <label>इयत्ता<input placeholder="इयत्ता" value={form.className} onChange={(e) => setForm({ ...form, className: e.target.value })} /></label>
-        <label>विषय<input placeholder="विषय" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>
-        <label>शिक्षक नाव<input placeholder="शिक्षक नाव" value={form.teacher} onChange={(e) => setForm({ ...form, teacher: e.target.value })} /></label>
-        <label>तुकडी<input placeholder="तुकडी" value={form.division} onChange={(e) => setForm({ ...form, division: e.target.value })} /></label>
-        <label>अंतिम दिनांक<input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
-        <label>WhatsApp Mobile<input placeholder="WhatsApp Mobile" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></label>
-        <label>गृहपाठ<textarea placeholder="गृहपाठ" value={form.homework} onChange={(e) => setForm({ ...form, homework: e.target.value })}></textarea></label>
-        <label>Attachment<input type="file" onChange={(e) => setForm({ ...form, attachment: e.target.files?.[0]?.name || "" })} /></label>
-      </div><button onClick={save}>गृहपाठ जतन करा</button></section>
-
-      <table>
-        <thead>
-          <tr><th>दिनांक</th><th>इयत्ता</th><th>विषय</th><th>गृहपाठ</th><th>Due Date</th><th>Attachment</th><th>WhatsApp</th></tr>
-        </thead>
-        <tbody>
-          {items.map((h) => (
-            <tr key={h.id}>
-              <td>{h.date}</td><td>{h.className} {h.division}</td><td>{h.subject}</td><td>{h.homework}</td><td>{h.dueDate || "-"}</td><td>{h.attachment || "-"}</td>
-              <td><button onClick={() => sendWhatsApp(h)}>WhatsApp पाठवा</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+export default function Homework({ onNavigate }) {
+  const { t } = useLanguage();
+  const blank = { date: localDate(), className: "", division: "", subject: "", teacher: "", homework: "", dueDate: "", attachment: null, audio: null };
+  const [items, saveItems] = useStoredState("erp_pro_homework", []), [form, setForm] = useState(blank), [query, setQuery] = useState(""), [busy, setBusy] = useState(false);
+  const upload = async (event, field) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; setBusy(true); try { const asset = await saveAsset(file, field === "audio"); setForm(f => ({ ...f, [field]: asset })); } catch (error) { notify(error.message); } finally { setBusy(false); } };
+  const save = () => { if (!["date", "className", "subject", "homework"].every(k => form[k].trim())) return notify("Date, class, subject and homework are required."); if (form.dueDate && form.dueDate < form.date) return notify("Due date cannot precede homework date."); if (saveItems([...items, { ...form, id: crypto.randomUUID(), createdAt: new Date().toISOString() }])) { setForm(blank); notify("Homework saved with local attachments."); } };
+  const visible = items.filter(h => Object.values(h).join(" ").toLowerCase().includes(query.toLowerCase()));
+  return <div className="core-page"><PageHeading eyebrow="BEYOND THE CLASSROOM" title="Homework & learning" description="A clear task, a helpful attachment, and time to learn. Keep parents informed." /><section className="school-panel workflow-panel"><div className="form-grid">{[["Date", "date"], ["Standard", "className"], ["Division", "division"], ["Subject", "subject"], ["Teacher", "teacher"], ["Due Date", "dueDate"]].map(([label, key]) => <label key={key}>{t(label)}<input type={key.toLowerCase().includes("date") ? "date" : "text"} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>)}<label>{t("Homework")}<textarea value={form.homework} onChange={e => setForm({ ...form, homework: e.target.value })} /></label><label>{t("Attachment")}<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => upload(e, "attachment")} disabled={busy} /><span>{form.attachment?.name}</span></label><label>{t("Audio notice")}<input type="file" accept="audio/mpeg,audio/wav,audio/ogg,audio/webm" onChange={e => upload(e, "audio")} disabled={busy} /><span>{form.audio?.name}</span></label></div><p>Files are retained in this browser’s local file store. Download important attachments for backup; cloud file sharing is not connected.</p><button className="school-button" onClick={save} disabled={busy}>{busy ? "Saving attachment…" : "Save Homework"}</button></section><div className="domain-toolbar"><label>Search class, subject, teacher or homework<input value={query} onChange={e => setQuery(e.target.value)} /></label><button onClick={() => exportRows(visible, "homework.xlsx")}>Export homework</button><button onClick={() => onNavigate("Formats", { initialType: "Homework Sheet" })}>Homework sheet format</button></div>{visible.length ? <div className="table-scroll"><table><thead><tr><th>Date / class</th><th>Subject / teacher</th><th>{t("Homework")}</th><th>Due</th><th>{t("Attachment")}</th><th>Audio</th><th>Parent notification</th></tr></thead><tbody>{visible.map(h => <tr key={h.id}><td>{h.date} · {h.className}/{h.division}</td><td>{h.subject} · {h.teacher}</td><td>{h.homework}</td><td>{h.dueDate}</td><td><AssetLink asset={h.attachment} /></td><td><AssetLink asset={h.audio} /></td><td><button onClick={() => onNavigate("Communications", { initialClass: h.className, initialDivision: h.division, initialMessage: `Homework: ${h.subject}\n${h.homework}\nDue: ${h.dueDate || "See teacher"}`, audioAsset: h.audio })}>Prepare parent notification</button></td></tr>)}</tbody></table></div> : <EmptyState icon="book" title="Make room for tomorrow’s learning" description="Create the first homework task or change your search to find a saved assignment." />}</div>;
 }

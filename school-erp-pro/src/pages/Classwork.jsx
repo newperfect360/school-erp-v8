@@ -47,6 +47,7 @@ export default function Classwork() {
           ))}
         </tbody>
       </table>
+      {items.length === 0 && <div className="empty-state"><strong>No classwork recorded yet</strong><span>Add a lesson above to build the class learning register.</span></div>}
     </div>
   );
 }

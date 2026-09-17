@@ -1,0 +1,31 @@
+import { useLanguage } from "../design/language";
+import StudentLookup from "../components/StudentLookup";
+import { useState } from "react";
+import { readStored, useStoredState, localDate, commitStoredBatch } from "../storage";
+import { exportStudents, exportRows } from "../services/excel";
+import { PageHeading, EmptyState } from "../design/SchoolUI";
+import { notify } from "../components/Feedback";
+import { saveAsset } from "../services/assets";
+import AssetLink from "../components/AssetLink";
+
+export default function GeneralRegister({ onNavigate }) {
+  const { t } = useLanguage();
+  const [students, , reload] = useStoredState("erp_pro_students", []), [history, , reloadHistory] = useStoredState("erp_pro_student_movements", []);
+  const [query, setQuery] = useState(""), [form, setForm] = useState({ studentId: "", type: "Admission", date: localDate(), reason: "", documents: "" });
+  const [attachments, setAttachments] = useState([]), [uploading, setUploading] = useState(false);
+  const upload = async event => { const files = [...(event.target.files || [])]; event.target.value = ""; setUploading(true); try { for (const file of files) { const asset = await saveAsset(file); setAttachments(previous => [...previous, asset]); } } catch (error) { notify(error.message); } finally { setUploading(false); } };
+  const visible = students.filter(s => [s.grNo, s.name, s.className, s.dob, s.admissionNo].join(" ").toLowerCase().includes(query.toLowerCase()));
+  const save = () => {
+    if (!form.studentId || !form.date || !form.reason.trim()) return notify("Choose student, date and reason.");
+    if (uploading) return notify("Wait for document uploads to finish.");
+    if (JSON.stringify(readStored("erp_pro_students", [])) !== JSON.stringify(students) || JSON.stringify(readStored("erp_pro_student_movements", [])) !== JSON.stringify(history)) return notify("Records changed in another screen. Reopen the register before saving.");
+    const student = students.find(s => String(s.id) === String(form.studentId));
+    if (!student) return notify("Select an existing student.");
+    const movement = { ...form, studentId: student.id, attachments, id: crypto.randomUUID(), grNo: student.grNo, studentName: student.name, createdAt: new Date().toISOString() };
+    if (!confirm(`Record ${form.type} for ${student.name}? History will be retained.`)) return;
+    try { commitStoredBatch({ erp_pro_student_movements: [...history, movement], erp_pro_students: students.map(s => s.id === student.id ? { ...s, status: ["Transfer", "Leaving", "Exit"].includes(form.type) ? form.type : "Active", archivedAt: ["Transfer", "Leaving", "Exit"].includes(form.type) ? new Date().toISOString() : null } : s) }); reload(); reloadHistory(); setAttachments([]); notify("Student movement saved."); } catch (error) { notify(error.message); }
+  };
+  return <div className="core-page"><PageHeading eyebrow="SCHOOL REGISTER" title="Admissions & General Register" description="Student-linked admission, entry, transfer and exit history. Existing records are preserved." /><div className="import-actions"><button onClick={() => onNavigate("Students")}>Add / edit Student Master</button><button onClick={() => exportStudents(visible, "general-register.xlsx")}>Export GR Excel</button><button onClick={() => onNavigate("Reports", { reportType: "Students" })}>Print GR report</button><button onClick={() => onNavigate("Formats", { initialType: "General Register Extract" })}>GR extract format</button></div><label>Search GR, name, class or DOB<input value={query} onChange={e => setQuery(e.target.value)} /></label>{visible.length ? <div className="table-scroll"><table><thead><tr><th>GR / Admission</th><th>Name</th><th>{t("Class")}</th><th>DOB</th><th>Admission</th><th>Status</th></tr></thead><tbody>{visible.map(s => <tr key={s.id}><td>{s.grNo} / {s.admissionNo || "—"}</td><td><button onClick={() => onNavigate("Students", { studentId: s.id })}>{s.name}</button></td><td>{s.className}/{s.division}</td><td>{s.dob}</td><td>{s.admissionDate || "Not recorded"}</td><td>{s.archivedAt ? "Archived" : s.status || "Active"}</td></tr>)}</tbody></table></div> : <EmptyState icon="file" title="Start with Student Master" description="Students entered or imported into the school appear in this register automatically." />}
+    <StudentLookup students={students} onSelect={s => { setQuery(s.grNo); setForm({ ...form, studentId: s.id }); }} /><section className="school-panel workflow-panel"><h3>Entry / exit register</h3><div className="form-grid"><label>{t("Student")}<select aria-label="Student" value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })}><option value="">Select student</option>{students.map(s => <option key={s.id} value={s.id}>{s.name} · {s.grNo}</option>)}</select></label><label>Movement<select aria-label="Movement" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>{["Admission", "Entry", "Transfer", "Leaving", "Exit"].map(t => <option key={t}>{t}</option>)}</select></label>{["date", "reason", "documents"].map(key => <label key={key}>{t(key)}<input type={key === "date" ? "date" : "text"} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>)}</div><label>Admission documents<input type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" disabled={uploading} onChange={upload} /></label><p>Files are saved in this browser. Download important documents separately; JSON backups do not contain file bytes.</p>{attachments.map(asset => <AssetLink key={asset.id} asset={asset} />)}<button onClick={save}>Record movement</button><button onClick={() => exportRows(history, "entry-exit-history.xlsx")}>Export history</button>{history.slice().reverse().map(h => <div key={h.id}><p>{h.date} · {h.studentName} / {h.grNo} · {h.type} · {h.reason} · {h.documents}</p>{(h.attachments || []).map(asset => <AssetLink key={asset.id} asset={asset} />)}</div>)}</section>
+    <details><summary>Previous admission register ({readStored("erp_pro_admissions", []).length})</summary>{readStored("erp_pro_admissions", []).map(item => <pre key={item.id}>{JSON.stringify(item, null, 2)}</pre>)}</details></div>;
+}

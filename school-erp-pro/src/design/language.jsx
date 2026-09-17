@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect } from "react";
 import { useStoredState } from "../storage";
+import { marathiLabels } from "./messages";
 
 const LanguageContext = createContext({ language: "mr", t: (en, mr) => mr || en });
 
@@ -7,7 +8,7 @@ export function LanguageProvider({ children }) {
   const [preference, setPreference] = useStoredState("erp_pro_language", { value: "mr" });
   const language = preference.value === "en" ? "en" : "mr";
   useEffect(() => { document.documentElement.lang = language; }, [language]);
-  return <LanguageContext.Provider value={{ language, setLanguage: value => setPreference({ value }), t: (en, mr) => language === "mr" ? mr || en : en }}>
+  return <LanguageContext.Provider value={{ language, setLanguage: value => setPreference({ value }), t: (en, mr) => language === "mr" ? mr || marathiLabels[en] || en : en }}>
     {children}
   </LanguageContext.Provider>;
 }

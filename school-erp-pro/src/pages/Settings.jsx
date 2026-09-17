@@ -52,7 +52,7 @@ export default function Settings({ onSaved }) {
     <div className="page">
       <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>शाळेच्या सेटिंग्ज</h2><p>शाळेची माहिती आणि संपर्क configuration</p></div></div>
 
-      <div className="form-grid">
+      <div className="form-grid">{[["schoolCode", "School Code / शाळा संकेतांक"], ["udise", "UDISE"], ["academicYear", "Academic Year / शैक्षणिक वर्ष"]].map(([name,label]) => <label key={name}>{label}<input name={name} value={settings[name] || ""} onChange={change} /></label>)}
         <label>संस्थेचे नाव<input name="sansthaName" placeholder="संस्थेचे नाव" value={settings.sansthaName} onChange={change} /></label>
         <label>शाळेचे नाव<input name="schoolName" placeholder="शाळेचे नाव" value={settings.schoolName} onChange={change} /></label>
         <label>पत्ता<input name="address" placeholder="पत्ता" value={settings.address} onChange={change} /></label>
@@ -60,7 +60,7 @@ export default function Settings({ onSaved }) {
         <label>Email<input name="email" placeholder="Email" value={settings.email} onChange={change} /></label>
         <label>Website<input name="website" placeholder="Website" value={settings.website} onChange={change} /></label>
         <label>WhatsApp API URL<input name="whatsappApiUrl" placeholder="WhatsApp API URL" value={settings.whatsappApiUrl} onChange={change} /></label>
-        <label>WhatsApp API Token<input type="password" name="whatsappToken" placeholder="WhatsApp API Token" value={settings.whatsappToken} onChange={change} /></label>
+        <p>Provider tokens must be configured in secure server environment variables. New secrets are not accepted in this browser form. Existing configuration has not been deleted.</p>
         <label>SMS API URL<input name="smsApiUrl" placeholder="SMS API URL" value={settings.smsApiUrl} onChange={change} /></label>
         <label>SMS Sender ID<input name="smsSenderId" placeholder="SMS Sender ID" value={settings.smsSenderId} onChange={change} /></label>
         <input type="file" name="logo" accept="image/*" onChange={change} />

@@ -36,14 +36,41 @@ export function writeStored(key, value) {
 export function useStoredState(key, fallback) {
   const [value, setValue] = useState(() => readStored(key, fallback));
   const current = useRef(value);
+  const snapshot = useRef(localStorage.getItem(key));
   const save = (next) => {
+    if (localStorage.getItem(key) !== snapshot.current) {
+      notify("Data changed in another screen or tab. Reopen this module before saving.");
+      return false;
+    }
     const updated = typeof next === "function" ? next(current.current) : next;
     if (!writeStored(key, updated)) return false;
+    snapshot.current = localStorage.getItem(key);
     current.current = updated;
     setValue(updated);
     return true;
   };
-  return [value, save];
+  const reload = () => { const latest = readStored(key, fallback); current.current = latest; snapshot.current = localStorage.getItem(key); setValue(latest); };
+  return [value, save, reload];
+}
+
+// Synchronous multi-key local commit with rollback. This is not a cloud transaction.
+export function commitStoredBatch(entries, expected = {}) {
+  const previous = Object.fromEntries(Object.keys(entries).map(key => [key, localStorage.getItem(key)]));
+  if (Object.entries(expected).some(([key, value]) => localStorage.getItem(key) !== value)) throw new Error("Data changed since preview. Reload and validate again.");
+  for (const [key, value] of Object.entries(entries)) {
+    if (previous[key] !== null) {
+      const parsed = JSON.parse(previous[key]);
+      if (Array.isArray(value) !== Array.isArray(parsed)) throw new Error("Existing data cannot be safely replaced.");
+    }
+  }
+  const changed = [];
+  try { for (const [key, value] of Object.entries(entries)) { localStorage.setItem(key, JSON.stringify(value)); changed.push(key); } }
+  catch (error) {
+    for (const key of changed) localStorage.removeItem(key);
+    for (const key of changed) if (previous[key] !== null) localStorage.setItem(key, previous[key]);
+    throw error;
+  }
+  window.dispatchEvent(new Event("school-data-changed"));
 }
 
 export function localDate() {

@@ -1,0 +1,7 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Draft only. Open access only after tenant/role emulator tests and review.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

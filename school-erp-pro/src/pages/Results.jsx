@@ -1,27 +1,53 @@
+import { useLanguage } from "../design/language";
+import StudentLookup from "../components/StudentLookup";
+import { useRef, useState } from "react";
+import { readStored, useStoredState, commitStoredBatch } from "../storage";
+import { exportRows, parseStudentFile } from "../services/excel";
+import { aggregateResults, calculatedResult, marksColumns, matchingResults, reviewMarks, validateMarks } from "../services/results";
+import { defaultFormat, documentHtml, escapeHtml, renderFormat, templateContext } from "../services/templates";
+import { PageHeading, EmptyState } from "../design/SchoolUI";
 import { notify } from "../components/Feedback";
-import { useState } from "react";
-import { readStored, useStoredState } from "../storage";
 
-const blank = { studentName: "", grNo: "", className: "", exam: "Unit Test", subject: "", maxMarks: "100", obtainedMarks: "" };
-const gradeFor = (percentage) => percentage >= 90 ? "A+" : percentage >= 75 ? "A" : percentage >= 60 ? "B" : percentage >= 45 ? "C" : percentage >= 35 ? "D" : "F";
-
-export default function Results() {
-  const students = readStored("erp_pro_students", []);
-  const [results, setResults] = useStoredState("erp_pro_results", []);
-  const [form, setForm] = useState(blank);
-  const [query, setQuery] = useState("");
+export default function Results({ settings = {} }) {
+  const { t } = useLanguage();
+  const students = readStored("erp_pro_students", []).filter(s => !s.archivedAt);
+  const [results, saveResults, reload] = useStoredState("erp_pro_results", []);
+  const [form, setForm] = useState({ studentId: "", subject: "", maxMarks: "100", obtainedMarks: "" });
+  const [exam, setExam] = useState("Unit Test"), [component, setComponent] = useState("Theory"), [year, setYear] = useState(settings.academicYear || "2026-27");
+  const [query, setQuery] = useState(""), [upload, setUpload] = useState(null), [review, setReview] = useState(null), [replace, setReplace] = useState(false), [preview, setPreview] = useState("");
+  const frame = useRef(null);
+  const selection = students.find(s => s.id === form.studentId);
+  const changeExam = (setter, value) => { setter(value); setReview(null); setReplace(false); setPreview(""); };
   const save = () => {
-    const max = Number(form.maxMarks); const obtained = Number(form.obtainedMarks);
-    if (!form.studentName.trim() || !form.subject.trim() || !Number.isFinite(max) || !Number.isFinite(obtained) || obtained < 0 || obtained > max) { notify("विद्यार्थी, विषय आणि योग्य गुण भरा"); return; }
-    const percentage = Math.round((obtained / max) * 10000) / 100;
-    if (!setResults([...results, { id: crypto.randomUUID(), ...form, maxMarks: max, obtainedMarks: obtained, percentage, grade: gradeFor(percentage), pass: percentage >= 35, createdAt: new Date().toISOString() }])) return;
-    setForm(blank); notify("निकाल नोंद जतन झाली");
+    const row = { ...form, studentName: selection?.name, grNo: selection?.grNo, className: selection?.className, division: selection?.division, exam, component, academicYear: year };
+    const error = validateMarks(row); if (error) return notify(error);
+    if (matchingResults(row, results).length) return notify("This subject/component already exists. Use the reviewed Excel update workflow.");
+    if (saveResults([...results, { id: crypto.randomUUID(), ...calculatedResult(row), createdAt: new Date().toISOString() }])) { setForm({ ...form, subject: "", obtainedMarks: "" }); setPreview(""); notify("Result saved."); }
   };
-  const fillStudent = (student) => setForm({ ...form, studentName: student.name, grNo: student.grNo, className: student.className });
-  const visible = results.filter((result) => Object.values(result).join(" ").toLowerCase().includes(query.toLowerCase()));
-  return <div className="page module-page"><div className="module-heading"><div><span className="eyebrow">ACADEMIC PERFORMANCE</span><h2>परीक्षा व निकाल</h2><p>Unit Test ते Annual Exam पर्यंत गुण, टक्केवारी आणि grade जतन करा.</p></div><div className="module-count">{results.length}<span>गुण नोंदी</span></div></div>
-    <section className="workflow-panel"><div className="panel-title"><h3>गुण नोंदणी</h3><span>गुण जतन केल्यावर grade आपोआप मोजला जातो</span></div><div className="form-grid"><label>विद्यार्थी<select aria-label="विद्यार्थी निवडा" value={form.studentName} onChange={(event) => { const student = students.find((item) => item.name === event.target.value); student ? fillStudent(student) : setForm({ ...form, studentName: event.target.value }); }}><option value="">विद्यार्थी निवडा</option>{students.map((student) => <option key={student.id} value={student.name}>{student.name} · {student.grNo}</option>)}</select></label><label>परीक्षा<input aria-label="परीक्षा" value={form.exam} onChange={(event) => setForm({ ...form, exam: event.target.value })} /></label><label>विषय<input aria-label="विषय" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} /></label><label>कमाल गुण<input aria-label="कमाल गुण" type="number" value={form.maxMarks} onChange={(event) => setForm({ ...form, maxMarks: event.target.value })} /></label><label>मिळालेले गुण<input aria-label="मिळालेले गुण" type="number" value={form.obtainedMarks} onChange={(event) => setForm({ ...form, obtainedMarks: event.target.value })} /></label></div><button onClick={save}>निकाल जतन करा</button></section>
-    <input className="module-search" aria-label="निकाल शोधा" placeholder="नाव, GR, परीक्षा किंवा विषय शोधा" value={query} onChange={(event) => setQuery(event.target.value)} />
-    {visible.length ? <div className="table-scroll"><table><thead><tr><th>विद्यार्थी</th><th>GR</th><th>परीक्षा</th><th>विषय</th><th>गुण</th><th>टक्के</th><th>Grade</th><th>स्थिती</th></tr></thead><tbody>{visible.map((result) => <tr key={result.id}><td>{result.studentName}</td><td>{result.grNo}</td><td>{result.exam}</td><td>{result.subject}</td><td>{result.obtainedMarks}/{result.maxMarks}</td><td>{result.percentage}%</td><td>{result.grade}</td><td>{result.pass ? "उत्तीर्ण" : "अनुत्तीर्ण"}</td></tr>)}</tbody></table></div> : <div className="empty-state"><strong>निकाल नोंदी उपलब्ध नाहीत</strong><span>वरील गुण नोंदणी formमधून पहिली नोंद तयार करा.</span></div>}
+  const load = async event => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; setReview(null); setReplace(false); setUpload(null); try { const parsed = await parseStudentFile(file); if (marksColumns.some(h => !parsed.headers.includes(h))) throw new Error("Use the marks template headers."); setUpload(parsed); } catch (error) { notify(error.message); } };
+  const validate = () => { const source = localStorage.getItem("erp_pro_results"); try { const existing = source ? JSON.parse(source) : []; if (!Array.isArray(existing)) throw new Error("Invalid result storage."); setReview({ source, existing, rows: reviewMarks(upload.rows, students, existing, exam, component, year) }); } catch (error) { notify(error.message); } };
+  const confirm = () => {
+    if (!review || review.rows.some(r => r.errors.length) || (review.rows.some(r => r.existing) && !replace)) return;
+    try {
+      let next = [...review.existing];
+      for (const item of review.rows) { const saved = { ...item.existing, ...calculatedResult(item.row), id: item.existing?.id || crypto.randomUUID(), updatedAt: new Date().toISOString() }; next = item.existing ? next.map(r => r.id === saved.id ? saved : r) : [...next, saved]; }
+      commitStoredBatch({ erp_pro_results: next }, { erp_pro_results: review.source }); reload(); setUpload(null); setReview(null); setPreview(""); notify("Marks imported and results recalculated.");
+    } catch (error) { notify(error.message); }
+  };
+  const visible = results.filter(r => (!form.studentId || r.studentId === form.studentId || (!r.studentId && selection?.grNo === r.grNo)) && (!query || Object.values(r).join(" ").toLowerCase().includes(query.toLowerCase())));
+  const marksheet = () => {
+    if (!selection) return notify("Choose a student first.");
+    const rows = visible.filter(r => r.exam === exam && (!r.academicYear || r.academicYear === year));
+    if (!rows.length) return notify("No marks for this student, exam and year.");
+    const summary = aggregateResults(rows), template = readStored("erp_pro_document_templates", []).find(t => t.type === "Marksheet") || defaultFormat("Marksheet");
+    const subject_marks = `<table><thead><tr><th>Subject</th><th>Component</th><th>Maximum</th><th>Obtained</th></tr></thead><tbody>${rows.map(r => `<tr><td>${escapeHtml(r.subject)}</td><td>${escapeHtml(r.component || "Theory")}</td><td>${Number(r.maxMarks)}</td><td>${Number(r.obtainedMarks)}</td></tr>`).join("")}</tbody></table>`;
+    setPreview(documentHtml(renderFormat(template, templateContext(selection, settings, { subject_marks, issue_date: new Date().toISOString().slice(0, 10), certificate_number: `${exam} / ${year}`, total: `${summary.total}/${summary.max}`, percentage: `${summary.percentage}%`, grade: summary.grade, result: summary.pass ? "Pass" : "Fail", remarks: "Pass requires at least 35% in each combined subject. Incomplete subject coverage must be reviewed by the school." })), template.css));
+  };
+  return <div className="core-page"><PageHeading eyebrow="ACADEMIC PROGRESS" title="Exams & results" description="Student-linked marks, reviewed Excel import and printable progress. No name-only matching." />
+    <StudentLookup students={students} onSelect={s => { setForm({ ...form, studentId: s.id }); setPreview(""); }} /><section className="school-panel workflow-panel"><div className="form-grid"><label>{t("Student")}<select aria-label="Student" value={form.studentId} onChange={e => { setForm({ ...form, studentId: e.target.value }); setPreview(""); }}><option value="">Choose student / all results</option>{students.map(s => <option key={s.id} value={s.id}>{s.name} · GR {s.grNo}</option>)}</select></label><label>{t("Exam")}<select aria-label="Exam" value={exam} onChange={e => changeExam(setExam, e.target.value)}>{["Unit Test", "Semester", "Annual Exam"].map(v => <option key={v}>{v}</option>)}</select></label><label>{t("Component")}<select aria-label="Component" value={component} onChange={e => changeExam(setComponent, e.target.value)}>{["Theory", "Practical", "Internal"].map(v => <option key={v}>{v}</option>)}</select></label><label>{t("Academic Year")}<input value={year} onChange={e => changeExam(setYear, e.target.value)} /></label>{[["Subject", "subject"], ["Maximum Marks", "maxMarks"], ["Obtained Marks", "obtainedMarks"]].map(([label, field]) => <label key={field}>{t(label)}<input type={field === "subject" ? "text" : "number"} value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} /></label>)}</div><button className="school-button" onClick={save}>{t("Save marks")}</button><button onClick={marksheet}>{t("Preview marksheet")}</button></section>
+    <section className="school-panel workflow-panel"><h3>Marks Excel Import</h3><div className="import-actions"><button onClick={() => exportRows([], "marks-import-template.xlsx", marksColumns)}>{t("Download Marks Template")}</button><label>{t("Upload marks")}<input aria-label="Upload marks" type="file" accept=".xlsx,.xls,.csv" onChange={load} /></label></div>{upload && <><p>{upload.rows.length} rows uploaded. Exam: {exam} · {component} · {year}</p><button onClick={validate}>{t("Validate marks")}</button><div className="table-scroll"><table><thead><tr>{marksColumns.map(h => <th key={h}>{h}</th>)}<th>Validation / previous marks</th></tr></thead><tbody>{upload.rows.slice(0, 100).map((row, i) => <tr key={i}>{marksColumns.map(h => <td key={h}>{row[h]}</td>)}<td>{review?.rows[i].errors.join("; ") || (review ? "Valid" : "Not validated")}{review?.rows[i].existing && ` · Previous ${review.rows[i].existing.obtainedMarks}/${review.rows[i].existing.maxMarks} → ${row["Obtained Marks"]}/${row["Maximum Marks"]}`}</td></tr>)}</tbody></table></div>{upload.rows.length > 100 && <p>First 100 shown. Download validation report to review every row before confirming.</p>}<button disabled={!review} onClick={() => exportRows(review.rows.map(r => ({ ...upload.rows[r.index], Errors: r.errors.join("; "), "Previous marks": r.existing ? `${r.existing.obtainedMarks}/${r.existing.maxMarks}` : "New" })), "marks-validation.xlsx")}>Download marks validation</button><label className="review-ack"><input type="checkbox" checked={replace} onChange={e => setReplace(e.target.checked)} />I reviewed all uploaded marks and any replacements.</label><button disabled={!review || !replace || review.rows.some(r => r.errors.length)} onClick={confirm}>{t("Confirm Marks Import")}</button></>}</section>
+    <div className="domain-toolbar"><label>Search results<input value={query} onChange={e => setQuery(e.target.value)} /></label><button onClick={() => exportRows(visible, "results.xlsx")}>Export Results Excel</button><button onClick={() => exportRows(visible, "results.csv")}>Export Results CSV</button></div>
+    {visible.length ? <div className="table-scroll"><table><thead><tr><th>Student / GR</th><th>{t("Exam")}</th><th>{t("Subject")}</th><th>Marks</th><th>Grade</th><th>Result</th></tr></thead><tbody>{visible.map(r => <tr key={r.id}><td>{r.studentName} · {r.grNo}</td><td>{r.exam} · {r.component || "Theory"}</td><td>{r.subject}</td><td>{r.obtainedMarks}/{r.maxMarks} ({r.percentage}%)</td><td>{r.grade}</td><td>{r.pass ? "Pass" : "Fail"}</td></tr>)}</tbody></table></div> : <EmptyState icon="chart" title="A clear picture of progress" description="Add subject marks or import the class marks sheet to begin." />}
+    {preview && <><button onClick={() => frame.current?.contentWindow?.print()}>Print marksheet / Save as PDF</button><iframe ref={frame} title="Marksheet preview" sandbox="allow-same-origin allow-modals" srcDoc={preview} className="format-preview" /></>}
   </div>;
 }

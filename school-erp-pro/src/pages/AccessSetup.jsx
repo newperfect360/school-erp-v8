@@ -1,0 +1,13 @@
+import { useLanguage } from "../design/language";
+import { useState } from "react";
+import { useStoredState } from "../storage";
+import { notify } from "../components/Feedback";
+import { PageHeading } from "../design/SchoolUI";
+
+export const schoolRoles = ["Super Admin", "Headmaster", "Admin", "Class Teacher", "Subject Teacher", "Sports Teacher", "Trip In-charge", "Library Staff", "Office Staff"];
+export default function AccessSetup() {
+  const { t } = useLanguage();
+  const [requests, saveRequests] = useStoredState("erp_pro_access_requests", []), [form, setForm] = useState({ name: "", email: "", role: "Class Teacher", assignedClass: "", assignedSubject: "", permissions: "" });
+  const save = () => { if (!form.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return notify("Name and valid school email are required."); if (requests.some(r => r.email.toLowerCase() === form.email.toLowerCase())) return notify("This email already has an access setup record."); if (saveRequests([...requests, { ...form, id: crypto.randomUUID(), status: "Pending identity provider", createdAt: new Date().toISOString() }])) { setForm({ ...form, name: "", email: "" }); notify("Access setup request saved. No login account has been created."); } };
+  return <div className="core-page"><PageHeading eyebrow="SCHOOL ACCESS" title="Teacher accounts & roles" description="Prepare individual staff access without storing passwords in the browser." /><section className="school-panel workflow-panel"><span className="audit-badge">NEEDS API — identity and server permissions are not connected</span><p>The existing login is local review access. These records do not create credentials or grant permissions. Firebase Authentication, OTP, password recovery and server-side school/class permissions must be configured before real staff accounts are enabled.</p><div className="form-grid">{["name", "email", "assignedClass", "assignedSubject", "permissions"].map(k => <label key={k}>{t(k)}<input type={k === "email" ? "email" : "text"} value={form[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} /></label>)}<label>Role<select aria-label="Role" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>{schoolRoles.map(r => <option key={r}>{r}</option>)}</select></label></div><button onClick={save}>Save account setup request</button></section><section className="school-panel workflow-panel"><h3>Account setup queue</h3>{requests.length ? requests.map(r => <p key={r.id}><b>{r.name}</b> · {r.email} · {r.role} · {r.assignedClass} / {r.assignedSubject} · {r.status}</p>) : <p>No staff account setup requests yet.</p>}</section></div>;
+}

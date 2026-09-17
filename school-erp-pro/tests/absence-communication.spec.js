@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { nav } from "./portal-navigation.mjs";
 
 const roster = [
   { id: "student-a", grNo: "A1", name: "Asha", className: "8", division: "A", mobile: "9876543210", fatherName: "Father A", fatherMobile: "9876543211", motherName: "Mother A", motherMobile: "9876543212" },
@@ -9,9 +10,7 @@ async function login(page) {
   await page.getByLabel("Username", { exact: true }).fill("admin");
   await page.getByLabel("Password", { exact: true }).fill("123456");
   await page.getByRole("button", { name: "Login", exact: true }).click();
-  const menu = page.getByRole("button", { name: "Open navigation", exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator(".sidebar").getByRole("button", { name: "उपस्थिती", exact: true }).click();
+  await nav(page, "Attendance");
 }
 async function setup(page) {
   await page.goto("/");

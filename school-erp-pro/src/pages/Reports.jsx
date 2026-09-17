@@ -1,49 +1,19 @@
-import { notify } from "../components/Feedback";
-import { useState } from "react";
-import { localDate } from "../storage";
+import { useLanguage } from "../design/language";
+import { useRef, useState } from "react";
+import { readStored } from "../storage";
+import { reportRows, reportTypes } from "../services/reports";
+import { exportRows } from "../services/excel";
+import { documentHtml, escapeHtml } from "../services/templates";
+import { PageHeading, EmptyState } from "../design/SchoolUI";
 
-export default function Reports() {
-  const [type, setType] = useState("विद्यार्थी अहवाल");
-  const [date, setDate] = useState(localDate());
-
-  const generateReport = () => {
-    notify("हा नमुना preview आहे. वास्तविक डेटाचा Report Generator या React आवृत्तीत अद्याप उपलब्ध नाही.");
-  };
-
-  const sendWhatsApp = () => {
-    const msg = `नमुना Report Preview: ${type}\nदिनांक: ${date}\nयात वास्तविक अहवालाचा डेटा जोडलेला नाही.`;
-    const mobile = prompt("WhatsApp Mobile Number टाका");
-    if (!mobile) return;
-    if (!/^(?:\+?91)?\d{10}$/.test(mobile.trim())) { notify("वैध 10 अंकी मोबाईल नंबर भरा"); return; }
-    window.open(`https://wa.me/91${mobile.slice(-10)}?text=${encodeURIComponent(msg)}`, "_blank");
-  };
-
-  return (
-    <div className="page">
-      <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>शालेय अहवाल</h2><p>अहवाल preview आणि print</p></div></div>
-      <div className="form-grid">
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option>विद्यार्थी अहवाल</option>
-          <option>शिक्षक अहवाल</option>
-          <option>उपस्थिती अहवाल</option>
-          <option>गृहपाठ अहवाल</option>
-          <option>वर्गपाठ अहवाल</option>
-          <option>निकाल अहवाल</option>
-          <option>प्रमाणपत्र अहवाल</option>
-          <option>WhatsApp Delivery Report</option>
-        </select>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
-
-      <button onClick={generateReport}>Generate Report</button>
-      <button onClick={() => window.print()}>PDF / Print</button>
-      <button onClick={sendWhatsApp}>WhatsApp Report</button>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>{type}</h3>
-        <p>दिनांक: {date}</p>
-        <p>नमुना preview: वास्तविक अहवालाचा डेटा या React आवृत्तीत जोडलेला नाही.</p>
-      </div>
-    </div>
-  );
+export default function Reports({ reportType = "Students" }) {
+  const { t } = useLanguage();
+  const [type, setType] = useState(reportType), [className, setClass] = useState(""), [division, setDivision] = useState(""), [month, setMonth] = useState(""), [query, setQuery] = useState(""), [preview, setPreview] = useState("");
+  const students = readStored("erp_pro_students", []), frame = useRef(null);
+  const rows = reportRows(type, { className, division, month }).filter(r => Object.values(r).join(" ").toLowerCase().includes(query.toLowerCase()));
+  const headers = [...new Set(rows.flatMap(r => Object.keys(r)))].filter(key => !["photo", "audio", "attachment", "html", "css"].includes(key));
+  const display = value => value && typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+  const printPreview = () => setPreview(documentHtml(`<h1>${escapeHtml(type)}</h1><p>${escapeHtml(month)} · ${rows.length} records</p><table><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${headers.map(h => `<td>${escapeHtml(display(r[h]))}</td>`).join("")}</tr>`).join("")}</tbody></table>`));
+  const change = (setter, value) => { setter(value); setPreview(""); };
+  return <div className="core-page"><PageHeading eyebrow="SCHOOL INSIGHTS" title="Reports & exports" description="Reports use your saved school records. Filter before downloading Excel, CSV or printing." /><section className="school-panel workflow-panel"><div className="domain-toolbar"><label>{t("Report")}<select aria-label="Report" value={type} onChange={e => change(setType, e.target.value)}>{reportTypes.map(t => <option key={t}>{t}</option>)}</select></label><label>{t("Class")}<select aria-label="Class" value={className} onChange={e => change(setClass, e.target.value)}><option value="">All classes</option>{[...new Set(students.map(s => s.className))].map(c => <option key={c}>{c}</option>)}</select></label><label>{t("Division")}<input value={division} onChange={e => change(setDivision, e.target.value)} /></label>{type.startsWith("Attendance") && <label>{t("Month")}<input type="month" value={month} onChange={e => change(setMonth, e.target.value)} /></label>}<label>{t("Search")}<input value={query} onChange={e => change(setQuery, e.target.value)} /></label></div><p>{rows.length} records. Attendance percentages use recorded days; holidays and unmarked days are not counted. Legacy records without a student ID/GR are excluded when filtering by class.</p><div className="import-actions"><button onClick={() => exportRows(rows, `${type}.xlsx`)} disabled={!rows.length}>{t("Download Excel")}</button><button onClick={() => exportRows(rows, `${type}.csv`)} disabled={!rows.length}>{t("Download CSV")}</button><button onClick={printPreview} disabled={!rows.length}>{t("Preview printable report")}</button></div></section>{rows.length ? <div className="table-scroll"><table><thead><tr>{headers.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{rows.slice(0, 100).map((r, i) => <tr key={i}>{headers.map(h => <td key={h}>{display(r[h])}</td>)}</tr>)}</tbody></table></div> : <EmptyState icon="chart" title="No matching records yet" description="Add records in the corresponding module or adjust the filters. No sample data is included in exports." />}{rows.length > 100 && <p>First 100 rows shown. Downloads and print include all filtered rows.</p>}{preview && <><button onClick={() => frame.current?.contentWindow?.print()}>{t("Print / Save as PDF")}</button><iframe ref={frame} title="Report preview" className="format-preview" sandbox="allow-same-origin allow-modals" srcDoc={preview} /></>}</div>;
 }
