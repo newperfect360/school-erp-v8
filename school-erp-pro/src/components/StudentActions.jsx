@@ -9,10 +9,9 @@ export function StudentActions({ student, onView, onEdit, onArchive, onAction })
     {onView && <button aria-label={`View profile ${student.grNo}`} onClick={() => onView(student.id)}>View</button>}
     <button onClick={() => onEdit(student.id)}>Edit</button>
     <button aria-label={student.archivedAt ? 'Restore student' : 'Archive student'} onClick={() => onArchive(student.id)}>{student.archivedAt ? 'Restore' : 'Archive'}</button>
-    <select aria-label={`More actions ${student.grNo}`} value="" onChange={e => onAction(student, e.target.value)}>
-      <option value="">More actions</option>
-      {['Promote', 'Change Class', 'Change Division', 'Change Roll Number', 'Change Academic Year', 'School Left', 'Delete'].map(action => <option key={action}>{action}</option>)}
-    </select>
+    <div className="student-visible-actions" aria-label={`Student actions ${student.grNo}`}>
+      {['Change Class', 'Change Division', 'Change Academic Year', 'Promote', 'School Left', 'Delete'].map(action => <button key={action} onClick={() => onAction(student, action)}>{action}</button>)}
+    </div>
   </div>;
 }
 

@@ -1,3 +1,6 @@
+.student-master-primary-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+.student-visible-actions { display:flex; flex-wrap:wrap; gap:5px; min-width:260px; }
+.student-visible-actions button { padding:6px 8px; font-size:10px; white-space:nowrap; }
 /* School identity, clear hierarchy and comfortably sized parent contact actions. */
 .student-contact-editor{margin:24px 0;padding-top:20px;border-top:1px solid #dee7ee}.student-contact-editor h2{font-size:20px;color:#234e73}.student-contact-editor p{font-size:12px;line-height:1.8;color:#738599}.student-contact-editor fieldset{border:1px solid #dce6ee;border-radius:8px;padding:16px;margin:0 8px 15px 0;min-width:0}.student-contact-editor legend{font-size:13px;font-weight:700;color:#285981;padding:0 6px}.student-contact-editor label{display:grid;gap:6px;margin-bottom:12px;font-size:12px;color:#516f88}.student-contact-editor details summary{font-size:12px;color:#3d6486;padding:10px 0}.attendance-family summary{font-size:11px;color:#265e8d;cursor:pointer;padding:8px 0;min-height:40px}.attendance-family{max-width:320px;white-space:normal}
 .portal-design{--ink:#163655;--muted:#687c8f;--line:#dfe7ee;background:#f6f8fa}

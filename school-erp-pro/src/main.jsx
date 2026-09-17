@@ -8,6 +8,7 @@ import './design/design-system.css'
 import './audit-upgrade.css'
 import './design/portal.css'
 import './design/education-refresh.css'
+import './design/institutional.css'
 
 
 createRoot(document.getElementById('root')).render(
