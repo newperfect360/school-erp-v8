@@ -1,5 +1,6 @@
 import { notify } from "./components/Feedback";
 import { useRef, useState } from "react";
+import {tagNewYearRecords,yearForDate,academicYears} from './services/academicYears';
 
 export function readStored(key, fallback) {
   try {
@@ -24,7 +25,8 @@ export function writeStored(key, value) {
         throw new Error("Invalid saved data");
       }
     }
-    localStorage.setItem(key, JSON.stringify(value));
+    if(key==='erp_pro_attendance'){commitStoredBatch({[key]:value});return true;}
+    localStorage.setItem(key, JSON.stringify(tagNewYearRecords(key,value,existing?JSON.parse(existing):[])));
     return true;
   } catch {
     notify("माहिती Save झाली नाही. Browser storage उपलब्ध नाही, भरलेले आहे किंवा जुना डेटा वाचता येत नाही. जुना डेटा बदललेला नाही.");
@@ -45,8 +47,9 @@ export function useStoredState(key, fallback) {
     const updated = typeof next === "function" ? next(current.current) : next;
     if (!writeStored(key, updated)) return false;
     snapshot.current = localStorage.getItem(key);
-    current.current = updated;
-    setValue(updated);
+    const saved = readStored(key, updated);
+    current.current = saved;
+    setValue(saved);
     return true;
   };
   const reload = () => { const latest = readStored(key, fallback); current.current = latest; snapshot.current = localStorage.getItem(key); setValue(latest); };
@@ -55,6 +58,8 @@ export function useStoredState(key, fallback) {
 
 // Synchronous multi-key local commit with rollback. This is not a cloud transaction.
 export function commitStoredBatch(entries, expected = {}) {
+  entries=Object.fromEntries(Object.entries(entries).map(([key,value])=>[key,tagNewYearRecords(key,value,readStored(key,[]))]));
+  if(entries.erp_pro_attendance){const years=readStored('erp_pro_attendance_years',{}),before=readStored('erp_pro_attendance',{});for(const date of Object.keys(entries.erp_pro_attendance)){if(JSON.stringify(before[date])===JSON.stringify(entries.erp_pro_attendance[date]))continue;const year=years[date]||yearForDate(date);if(academicYears().some(y=>y.id===year&&y.status!=='Open'))throw Error('Attendance year is closed or archived. Reopen it before editing.');years[date]=year;}entries.erp_pro_attendance_years=years;}
   const previous = Object.fromEntries(Object.keys(entries).map(key => [key, localStorage.getItem(key)]));
   if (Object.entries(expected).some(([key, value]) => localStorage.getItem(key) !== value)) throw new Error("Data changed since preview. Reload and validate again.");
   for (const [key, value] of Object.entries(entries)) {

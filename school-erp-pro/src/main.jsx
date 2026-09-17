@@ -6,6 +6,7 @@ import { LanguageProvider } from './design/language.jsx'
 import './design/design-system.css'
 import './audit-upgrade.css'
 import './design/portal.css'
+import './design/education-refresh.css'
 
 
 createRoot(document.getElementById('root')).render(

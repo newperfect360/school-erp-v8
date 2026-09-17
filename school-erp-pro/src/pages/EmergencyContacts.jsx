@@ -1,0 +1,6 @@
+import {useState} from 'react';
+import {readStored} from '../storage';
+import {lifecycleActive} from '../services/studentLifecycle';
+import FamilyContactCard from '../components/FamilyContactCard';
+import {PageHeading,Avatar} from '../design/SchoolUI';
+export default function EmergencyContacts({onNavigate}){const [query,setQuery]=useState('');const students=readStored('erp_pro_students',[]).filter(lifecycleActive).filter(s=>[s.name,s.grNo,s.className].join(' ').toLowerCase().includes(query.toLowerCase()));return <div className="core-page"><PageHeading eyebrow="QUICK PARENT CONTACT" title="Emergency Contacts" description="Father, mother and emergency contacts stay separate. Choose the person you need directly."/><label>Find student or GR<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Student name, GR or class"/></label>{students.slice(0,30).map(s=><section key={s.id} className="emergency-student"><div className="emergency-student-heading"><Avatar name={s.name} photo={s.photo}/><div><h2>{s.name}</h2><span>Class {s.className}/{s.division} · GR {s.grNo}</span></div></div><FamilyContactCard student={s} onNavigate={onNavigate}/></section>)}{students.length>30&&<p>Showing 30 matches. Narrow the search for more students.</p>}{!students.length&&<p>No matching students.</p>}</div>}

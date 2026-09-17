@@ -1,3 +1,5 @@
+import AcademicYears from './pages/AcademicYears';
+import EmergencyContacts from './pages/EmergencyContacts';
 import StudentLifecycle from './pages/StudentLifecycle';
 import LongAbsence from './pages/LongAbsence';
 import {prepareLongAbsenceAlerts} from './services/longAbsenceStore';
@@ -42,14 +44,16 @@ import ParentInteractions from "./pages/ParentInteractions";
 import {prepareDailyMessages} from "./services/messageStore";
 import {notify} from "./components/Feedback";
 
-const pages = { Lifecycle: StudentLifecycle, LongAbsence, PhotoImport, Automation: AutomationSettings, Checkout: StudentCheckout, Fees, Meetings: ParentInteractions, Visits: ParentInteractions, PortalInfo, PortalContent, Academics, Students, Teachers, Attendance, Homework, Classwork, Certificates, Formats: SchoolFormats, Admissions: GeneralRegister, Scholarships, Communications, AccessSetup, Backup: BackupRestore, Results, IDCard, Reports, Parents, Trips, Sports, Library };
+const pages = { AcademicYears, EmergencyContacts, Lifecycle: StudentLifecycle, LongAbsence, PhotoImport, Automation: AutomationSettings, Checkout: StudentCheckout, Fees, Meetings: ParentInteractions, Visits: ParentInteractions, PortalInfo, PortalContent, Academics, Students, Teachers, Attendance, Homework, Classwork, Certificates, Formats: SchoolFormats, Admissions: GeneralRegister, Scholarships, Communications, AccessSetup, Backup: BackupRestore, Results, IDCard, Reports, Parents, Trips, Sports, Library };
 const defaults = { schoolName: "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय", sansthaName: "स्व. अमानउल्ला मोतीवाला शिक्षण प्रसारक मंडळ", address: "नायगाव (भिकापूर), छत्रपती संभाजीनगर", principal: "मुख्याध्यापक", logo: "" };
 
 export default function App() {
   const [settings,setSettings]=useState(()=>readStored("schoolSettings",defaults));
+  const [pageVersion,setPageVersion]=useState(0);
   const [login,setLogin]=useState(false),[active,setActive]=useState("Dashboard"),[pageOptions,setPageOptions]=useState({}),[role,setRole]=useState("Admin");
-  const navigate=(key,options={})=>{if(!canView(role,key)){setActive("PortalInfo");setPageOptions({title:"Access not available in this role preview",titleMr:"या भूमिकेच्या पूर्वदृश्यात प्रवेश उपलब्ध नाही"});return;}setActive(key);setPageOptions(options);window.scrollTo({top:0});};
+  const navigate=(key,options={})=>{setPageVersion(v=>v+1);if(!canView(role,key)){setActive("PortalInfo");setPageOptions({title:"Access not available in this role preview",titleMr:"या भूमिकेच्या पूर्वदृश्यात प्रवेश उपलब्ध नाही"});return;}setActive(key);setPageOptions(options);window.scrollTo({top:0});};
   useEffect(()=>{if(!login)return;const prepare=()=>{try{prepareDailyMessages();prepareLongAbsenceAlerts()}catch(e){notify(e.message)}};prepare();const timer=setInterval(prepare,60000);return()=>clearInterval(timer)},[login]);
+  useEffect(()=>{const changed=()=>setSettings(readStored("schoolSettings",defaults));window.addEventListener("academic-year-changed",changed);return()=>window.removeEventListener("academic-year-changed",changed)},[]);
   const Page=pages[active];
-  return <div className="design-system portal-design"><Feedback/>{!login?<SchoolLogin settings={settings} onLogin={()=>{setLogin(true);setActive("Dashboard");setPageOptions({});setRole("Admin")}}/>:<PortalShell settings={settings} active={active} role={role} onRole={setRole} onNavigate={navigate} onLogout={()=>setLogin(false)}><PageBoundary key={active}>{active==="Dashboard"?<PortalHome settings={settings} role={role} onNavigate={navigate}/>:active==="TeacherDashboard"?<TeacherDashboard onNavigate={navigate}/>:active==="Settings"?<Settings onSaved={setSettings}/>: ["Inventory","Timetable","Calendar","Staff"].includes(active)?<SchoolOperations key={active} module={active}/>:Page?<Page key={active+JSON.stringify(pageOptions)} kind={active==="Visits"?"Visit":"Meeting"} {...pageOptions} settings={settings} role={role} onNavigate={navigate}/>:<OperationalModules key={active} module={active}/>}</PageBoundary></PortalShell>}</div>;
+  return <div className="design-system portal-design"><Feedback/>{!login?<SchoolLogin settings={settings} onLogin={()=>{setLogin(true);setActive("Dashboard");setPageOptions({});setRole("Admin")}}/>:<PortalShell settings={settings} active={active} role={role} onRole={setRole} onNavigate={navigate} onLogout={()=>setLogin(false)}><PageBoundary key={active}>{active==="Dashboard"?<PortalHome settings={settings} role={role} onNavigate={navigate}/>:active==="TeacherDashboard"?<TeacherDashboard onNavigate={navigate}/>:active==="Settings"?<Settings onSaved={setSettings}/>: ["Inventory","Timetable","Calendar","Staff"].includes(active)?<SchoolOperations key={active} module={active}/>:Page?<Page key={active+JSON.stringify(pageOptions)+pageVersion} kind={active==="Visits"?"Visit":"Meeting"} {...pageOptions} settings={settings} role={role} onNavigate={navigate}/>:<OperationalModules key={active} module={active}/>}</PageBoundary></PortalShell>}</div>;
 }

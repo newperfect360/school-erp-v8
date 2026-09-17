@@ -7,12 +7,13 @@ export const studentColumns = [
   ["Gender", "gender"], ["Blood Group", "bloodGroup"], ["Admission Date", "admissionDate"], ["Academic Year", "academicYear"],
   ["Father Name", "fatherName"], ["Mother Name", "motherName"], ["Parent / Guardian Name", "guardianName"], ["Parent Mobile", "mobile"],
   ["Father Mobile", "fatherMobile"], ["Mother Mobile", "motherMobile"], ["Guardian Mobile", "guardianMobile"], ["Alternate Contact Name", "alternateName"],
-  ["Alternate Mobile", "alternateMobile"], ["WhatsApp Number", "whatsapp"], ["Address", "address"], ["Emergency Contact", "emergencyContact"],
+  ["Alternate Mobile", "alternateMobile"], ["WhatsApp Number", "whatsapp"], ["Father WhatsApp", "fatherWhatsapp"], ["Mother WhatsApp", "motherWhatsapp"], ["Address", "address"], ["Emergency Contact Name", "emergencyName"], ["Emergency Relation", "emergencyRelation"], ["Emergency Mobile", "emergencyContact"],
   ["Previous School", "previousSchool"], ["Student Category", "category"], ["Scholarship Details", "scholarship"], ["Sports Details", "sports"],
   ["Health Notes", "healthNotes"], ["Aadhaar Reference", "aadhaar"], ["Student Status", "status"],
 ];
 
 const aliases = {
+  emergencyContact: ['emergencycontact','emergencymobile','emergencycontactnumber'],
   healthNotes: ["healthnote", "healthnotes", "medicalnote", "medicalnotes"],
   student_name_mr: ["marathiname", "studentnamemarathi", "विद्यार्थीनावमराठी"],
   name: ["studentfullname", "fullname", "studentname", "name", "विद्यार्थीपूर्णनाव", "विद्यार्थीनाव"],

@@ -27,6 +27,7 @@ export function parentContacts(student) {
   return [
     ["father", "Father", student.fatherName, student.fatherMobile],
     ["mother", "Mother", student.motherName, student.motherMobile],
+    ["emergency", "Emergency Contact", student.emergencyName || student.emergencyRelation, student.emergencyContact],
     ["guardian", "Guardian", student.guardianName, student.guardianMobile],
     ["primary", "Parent / Guardian", student.guardianName || "Parent / Guardian", student.mobile],
     ["alternate", "Alternate Contact", student.alternateName, student.alternateMobile],

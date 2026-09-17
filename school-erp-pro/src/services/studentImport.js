@@ -2,7 +2,7 @@ import { bilingualStudent } from "./bilingualStudent.js";
 import { normalizeStudentRow } from "./excel.js";
 
 export const canonical = value => String(value ?? "").trim().normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ");
-export const updateFields = ["photoNumber", "father_name_mr", "mother_name_mr", "address_mr","mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact", "address", "className", "division", "rollNo", "scholarship", "sports", "academicYear", "fatherName", "motherName", "guardianName", "alternateName", "healthNotes", "student_name_mr"];
+export const updateFields = ["emergencyName","emergencyRelation","fatherWhatsapp","motherWhatsapp","photoNumber", "father_name_mr", "mother_name_mr", "address_mr","mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact", "address", "className", "division", "rollNo", "scholarship", "sports", "academicYear", "fatherName", "motherName", "guardianName", "alternateName", "healthNotes", "student_name_mr"];
 export function normalizeDate(value) {
   const input = String(value ?? "").trim();
   if (!input) return "";
@@ -38,7 +38,7 @@ export function reviewStudentImport(rows, mapping, existing, { mode = "create", 
       const date = normalizeDate(student[key]);
       if (!date) errors.push(`${key}: use YYYY-MM-DD or DD/MM/YYYY.`); else student[key] = date;
     }
-    for (const key of ["mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact"]) if (student[key]) {
+    for (const key of ["fatherWhatsapp", "motherWhatsapp", "mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact"]) if (student[key]) {
       const mobile = normalizeMobile(student[key]);
       if (mobile === null) errors.push(`${key}: invalid mobile number.`); else student[key] = mobile;
     }

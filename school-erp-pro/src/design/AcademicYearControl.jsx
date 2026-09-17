@@ -1,0 +1,4 @@
+import {academicYears,currentAcademicYear} from '../services/academicYears';
+import {useLanguage} from './language';
+import Icon from '../components/Icon';
+export default function AcademicYearControl({role,onNavigate}){const {t}=useLanguage(),current=currentAcademicYear(),admin=['Admin','Super Admin','Headmaster'].includes(role);return <div className="header-year"><Icon name="calendar" size={18}/><div><small>{t('CURRENT ACADEMIC YEAR','चालू शैक्षणिक वर्ष')}</small>{admin?<select aria-label="Academic year selector" title="Choose a year to review; activate it in Academic Years" value={current} onChange={e=>onNavigate('AcademicYears',{initialYear:e.target.value})}>{academicYears().sort((a,b)=>b.id.localeCompare(a.id)).map(y=><option key={y.id} value={y.id}>{y.id}{y.status!=='Open'?` · ${y.status}`:''}</option>)}</select>:<strong>{current}</strong>}</div>{admin&&<button aria-label="Manage academic years" onClick={()=>onNavigate('AcademicYears')}>↗</button>}</div>}

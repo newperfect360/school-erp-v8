@@ -1,3 +1,4 @@
+import FamilyContactCard from './FamilyContactCard';
 import {lifecycleActive} from '../services/studentLifecycle';
 import AudioRecorder from "./AudioRecorder";
 import {readAsset} from "../services/assets";
@@ -133,7 +134,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
       <div className="contact-actions bulk-actions"><label><input type="checkbox" checked={chosen.length === absent.length} onChange={e => setSelected(e.target.checked ? absent.map(s => String(s.id)) : [])} /> Select all absent</label><span>{chosen.length} selected</span>{[["whatsapp", "Send WhatsApp to selected"], ["sms", "Send SMS to selected"], ["audio", "Send common audio notice"]].map(([channel, label]) => <button key={channel} disabled={!chosen.length} onClick={() => setBatch({ channel, date, ids: chosen.map(s => String(s.id)) })}>{label}</button>)}<button disabled={!chosen.length} onClick={exportParents}>Export parent list</button></div>
       <div className="followup-grid">{absent.map(s => { const contact = contactFor(s); const events = eventsFor(s); const followup = followupFor(s); return <article className="followup-card" key={s.id} data-student-id={s.id}>
         <div className="followup-heading"><input type="checkbox" aria-label={`Select ${s.name}`} checked={selected.includes(String(s.id))} onChange={e => setSelected(current => e.target.checked ? [...current, String(s.id)] : current.filter(id => id !== String(s.id)))} />{s.photo ? <img src={s.photo} alt={`${s.name} student photo`} /> : <span className="student-placeholder" aria-label="No student photo">{s.name?.slice(0, 1)}</span>}<div><strong>{s.name}</strong><span>Class {s.className}/{s.division} · GR {s.grNo}</span></div></div>
-        {quickActions(s)}<div className="parent-number">Parent number: {contact?.mobile || "Missing or invalid"}</div>
+        <FamilyContactCard student={s} date={date} message={absenceMessage(s,date,settings)} requireAbsent compact/>{quickActions(s)}<div className="parent-number">Parent number: {contact?.mobile || "Missing or invalid"}</div>
         <dl className="contact-progress">{[["whatsapp", "WhatsApp Sent"], ["sms", "SMS Sent"], ["call", "Call Initiated"]].map(([channel, label]) => <div key={channel}><dt>{label}</dt><dd>{events.some(h => h.channel === channel) ? channel === "call" ? "Dialer requested" : "Unconfirmed · composer opened" : "Not initiated"}</dd></div>)}</dl>
         {events.some(h => h.channel === "notification") && <p>Absence notification prepared — not sent</p>}
         <label>Parent Response<textarea aria-label={`Parent Response for ${s.name}`} maxLength={2000} value={followup.response} onChange={e => setFollowup(s, { response: e.target.value })} /></label>

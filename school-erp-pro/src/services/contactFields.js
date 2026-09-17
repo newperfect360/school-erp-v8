@@ -1,0 +1,1 @@
+export const contactFields=['fatherName','fatherMobile','fatherWhatsapp','motherName','motherMobile','motherWhatsapp','emergencyName','emergencyRelation','emergencyContact','guardianName','guardianMobile','mobile','whatsapp','alternateName','alternateMobile'];
