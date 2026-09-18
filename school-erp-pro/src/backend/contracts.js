@@ -1,6 +1,7 @@
 /** Web and Android use the same server-owned school/student IDs. No admin SDK in clients. */
+import {currentSiteUrls} from '../config/siteUrls';
 export const backendCapabilities = Object.freeze({ version: 1, collections: ["students", "attendance", "homework", "results", "documentIssues", "trips", "sports", "scholarships", "libraryLoans", "equipmentLoans", "communications", "auditEvents", "photoImports", "feeLedger", "parentMeetings", "parentVisits", "studentCheckouts", "messageTemplates", "messageJobs", "automationSettings", "resultPublications", "academicHistory", "studentMovements", "longAbsenceSettings", "longAbsenceAlerts", "longAbsenceFollowups"], identityProvider: "firebase-auth", configured: Boolean(import.meta.env.VITE_SCHOOL_API_URL) });
-export function createSchoolApi({ baseUrl, getIdToken, schoolId }) {
+export function createSchoolApi({ baseUrl = import.meta.env.VITE_SCHOOL_API_URL || currentSiteUrls().apiBaseUrl, getIdToken, schoolId }) {
   const url = new URL(baseUrl);
   if (url.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(url.hostname)) throw new Error("School API must use HTTPS.");
   if (!schoolId || typeof getIdToken !== "function") throw new Error("Verified identity and school scope are required.");
