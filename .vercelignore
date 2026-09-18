@@ -1,0 +1,9 @@
+android-app/
+docs/
+notes/
+tests/
+school-erp-pro/artifacts/
+school-erp-pro/backend/
+school-erp-pro/tests/
+school-erp-pro/test-results/
+school-erp-pro/playwright-report/

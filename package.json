@@ -1,7 +1,10 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "node scripts/serve-local.mjs",
+    "dev": "npm --prefix school-erp-pro run dev --",
+    "build": "npm --prefix school-erp-pro run build",
+    "preview": "npm --prefix school-erp-pro run preview --",
+    "legacy:dev": "node scripts/serve-local.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {}
