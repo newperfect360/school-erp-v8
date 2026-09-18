@@ -1,5 +1,7 @@
 # Local / Vercel source audit — 18 September 2026
 
+**Historical audit — superseded by [current production verification](PRODUCTION_SOURCE_VERIFICATION.md).** Commit `493ffa28a3972fab65c401d22ad69b68fa2e8527` subsequently deployed the configuration fix through Git. The actual live HTML/JS/CSS and rendered layout now match localhost. The blocked-deployment status below describes the earlier check, not current production.
+
 Status: diagnosis confirmed, local configuration fixed and production build verified. **Live deployment is blocked by Vercel authentication and has not been changed.**
 
 ## Requested source report
