@@ -1,6 +1,6 @@
 import {collection,doc,getDoc,getDocs,query,where,onSnapshot,runTransaction,serverTimestamp} from 'firebase/firestore';
 import {ref,uploadBytes,getBlob} from 'firebase/storage';
-import {collections,validateMutation,conflictError} from './recordProtocol';
+import {collections,validateMutation,conflictError} from './recordProtocol.js';
 
 const admin=member=>['Admin','Super Admin'].includes(member.role);
 const globalCollections=['academic_years','notifications','settings'];
@@ -9,7 +9,7 @@ export function createFirebaseRepository({db,storage,auth,schoolId}){
  let member=null;
  const user=()=>{if(!auth.currentUser)throw Error('Sign in to your school account.');return auth.currentUser};
  const record=(name,id)=>doc(db,root,name,id);
- async function membership(){const snapshot=await getDoc(doc(db,root,'members',user().uid));if(!snapshot.exists()||snapshot.data().active!==true)throw Error('This account has no active school membership.');member={uid:user().uid,...snapshot.data()};return member}
+ async function membership(){const snapshot=await getDoc(doc(db,root,'members',user().uid));if(!snapshot.exists()||snapshot.data().active!==true)throw Error('This account has no active school membership.');member={...snapshot.data(),uid:user().uid};return member}
  function queries(name){
   if(!collections.includes(name)||!member)throw Error('Load verified membership before reading school data.');
   const base=collection(db,root,name);if(admin(member))return [base];
@@ -41,7 +41,7 @@ export function createFirebaseRepository({db,storage,auth,schoolId}){
    const next={id:mutation.id,class_id:mutation.classId||'',version:version+1,updated_at:serverTimestamp(),updated_by:uid,deleted:!!mutation.deleted,data:mutation.data};
    transaction.set(target,next);
    if(indexRef)transaction.set(indexRef,{student_id:mutation.id});
-   transaction.set(record('audit_logs',`${mutation.collection}_${mutation.id}_${version+1}`),{collection:mutation.collection,record_id:mutation.id,version:version+1,actor:uid,at:serverTimestamp(),mutation_id:mutation.mutationId});
+   transaction.set(record('audit_logs',`${mutation.collection}_${mutation.id}_${version+1}`),{collection:mutation.collection,record_id:mutation.id,version:version+1,actor:uid,at:serverTimestamp(),mutation_id:mutation.mutationId,after:mutation.data});
    return next;
   });
  }

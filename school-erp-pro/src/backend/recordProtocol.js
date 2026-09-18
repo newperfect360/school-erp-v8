@@ -1,4 +1,4 @@
-import schema from '../../../shared/school-data-schema.json';
+import schema from '../../../shared/school-data-schema.json' with {type:'json'};
 
 export const collections=schema.collections.filter(name=>name!=='audit_logs');
 export const classId=student=>`${String(student.className||'').trim()}:${String(student.division||'').trim()}`;

@@ -4,7 +4,7 @@ service firebase.storage {
     function member(school) { return firestore.get(/databases/(default)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
     function allowed(school, student) {
       let m=member(school);
-      return request.auth != null && m.active == true &&
+      return request.auth != null && m.active == true && m.role in ['Admin','Super Admin','Teacher','Class Teacher','Subject Teacher','Sports Teacher','Library Staff','Accounts Staff'] &&
         (m.role in ['Admin','Super Admin'] || student in m.studentIds ||
         firestore.get(/databases/(default)/documents/schools/$(school)/students/$(student)).data.class_id in m.classIds);
     }

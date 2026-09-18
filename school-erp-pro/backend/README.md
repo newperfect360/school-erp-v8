@@ -1,15 +1,32 @@
-# Shared school backend preparation — not deployed
+# Shared school backend — inactive, not deployed
 
-Current React persistence is browser-local. The separate Android app is a design preview. Neither is represented as a production authenticated school system.
+Current web screens still persist to browser storage; Android opens preview screens. Adding an environment file does **not** connect those screens yet. No production data has been migrated.
 
-`src/backend/contracts.js` defines an inactive token-based API adapter. Its school/student IDs must be shared with Android. Implement endpoints under `/v1/schools/{schoolId}/{resource}` using verified Firebase ID tokens, server-owned membership and explicit roles. Never trust a client role, actor, school ID or class assignment without authorization. Use optimistic versions and idempotency keys for imports, issuance, lending and communication jobs.
+The new JavaScript and Kotlin repositories share `../../shared/school-data-schema.json` and `schools/{schoolId}/{collection}/{recordId}` paths. They preserve student IDs, use a GR registry, check expected versions and atomically write revision snapshots to audit_logs. Both clients must use the same approved project and tenant.
 
-School membership fields: `uid`, `schoolId`, `role`, `active`, `classIds`, `subjectIds`. Only an authorized privileged server workflow can change membership. OTP must include expiry, attempt limits, resend delay, replay protection and appropriate SMS-provider setup; forgotten passwords must use verified identity recovery. Do not implement a browser-generated OTP or store staff passwords locally.
+Firestore and Storage rules are **draft, unverified rules**, replacing the previous deny-all placeholders. Do not deploy until emulator tests and security review pass. Membership is server-owned at `schools/{schoolId}/members/{uid}` with active, role, classIds and studentIds. No client can assign its own role. Protected files use authenticated storage paths, not public URLs.
 
-Use a server repository for cross-document transactions, immutable actor-aware audit events, soft deletes with restore history, managed file uploads and verified delivery callbacks. Attachment endpoints validate content/type/size, ownership and retention; return short-lived links. Browser audio-share or composer opening is not delivery evidence. Telephony adapters remain provider-neutral; secret credentials come from server environment configuration.
+## Checks
 
-The draft rules below default to **no access**. They are scaffolding, not a ready deployment: implement and emulator-test tenant, role, class/subject scope, disabled-user and file rules before enabling any access. No production Firebase file, root config or existing data is modified. No destructive migration is prepared or executed.
+From this directory, with Java 21: `npm ci`, then `npm test`. This uses only loopback emulators and project `demo-gbs-school`; it does not deploy anything. The emulator download must complete first. The repository tests simulate clients, not Android UI interaction.
 
-Before integration, obtain the approved staging project, official school/tenant identity, provider configuration and exact schema. Reconcile both legacy catalogs without losing IDs. Export and test restoration of browser records **and IndexedDB attachments**, map schema versions, run staging tests, then request approval for a concrete migration/rollback plan. Browser JSON backups do not include binary attachments.
+Independent queue tests: `node --test tests/outbox.test.mjs`.
 
-References: [Firebase Auth](https://firebase.google.com/docs/auth), [Firestore rules](https://firebase.google.com/docs/firestore/security/get-started), [Storage rules](https://firebase.google.com/docs/storage/security), [Emulator testing](https://firebase.google.com/docs/rules/unit-tests).
+Android checks from `android-app/GBSSCHOOL`: `./gradlew.bat assembleDebug testDebugUnitTest lintDebug --offline`.
+
+## Remaining work
+
+- Confirm approved project and tenant, register com.gbsschool.app in the same project and provide its public Android client configuration. Never package service-account credentials.
+- Confirm staff sign-in method; wire authenticated login and provision memberships through a trusted administrative workflow. OTP is not implemented.
+- Verify rules, disabled accounts, module/class scopes, protected files, conflicts and GR uniqueness. Existing tests cover only part of the matrix.
+- Replace actual page storage calls with shared reads/listeners and queued writes. Preserve dirty forms; do not display queued edits as centrally saved. Remove preview role selection in authenticated mode.
+- Wire Kotlin repository/queue/controller to real Compose screens, account lifecycle and network monitoring. Only one controller should own an account queue.
+- Review migration of local records and binary attachments; preserve IDs and reconcile collisions. Do not automatically upload browser records upon sign-in.
+- Integrate Excel batches, photos/documents, academic year, results and communication events. The repository currently mutates one record per transaction; batch integrity is pending.
+- Run all ten requested scenarios on both actual clients.
+
+Retries retain expected versions and never automatically rebase conflicts. Web multi-tab queue coordination and conflict-resolution UI are pending. Account-scoped Android queues must not be exposed in another user's UI. FCM delivery, provider jobs and telephony remain pending. The old HTTP contracts.js adapter is inactive, not a second backend.
+
+See `../../docs/SHARED_DATA_IMPLEMENTATION_STATUS.md` for test results and exact changed files.
+
+References: [Firestore transactions](https://firebase.google.com/docs/firestore/manage-data/transactions), [query authorization](https://firebase.google.com/docs/firestore/security/rules-query), [emulator connections](https://firebase.google.com/docs/emulator-suite/connect_firestore).
