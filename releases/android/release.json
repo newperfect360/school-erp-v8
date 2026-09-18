@@ -6,7 +6,7 @@
   "buildType": "debug — UI preview only",
   "minSdk": 24,
   "targetSdk": 36,
-  "bytes": 23480478,
-  "sha256": "badb3afd16fb77766f32d8a9a36a86d83413e48aad72dd097022cd514c9a6224",
-  "releaseDate": "2026-09-17"
+  "bytes": 24082190,
+  "sha256": "2f04fe3d74d37feab544ab0a1734dd933095717e621eac6f353e3b31344e3639",
+  "releaseDate": "2026-09-18"
 }

@@ -1,0 +1,11 @@
+{
+  "name": "school-shared-backend-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --project demo-gbs-school --only firestore,auth,storage \"node --test tests/*.test.mjs\"",
+    "emulators": "firebase emulators:start --project demo-gbs-school --only firestore,auth,storage"
+  },
+  "dependencies": {"firebase-admin": "^13.0.0"},
+  "devDependencies": {"@firebase/rules-unit-testing": "^5.0.0", "firebase-tools": "^15.0.0"}
+}

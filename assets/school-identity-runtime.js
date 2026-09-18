@@ -2,6 +2,7 @@
 (function(){
  const official=window.SCHOOL_IDENTITY;
  if(!official)return;
+ document.title=official.schoolName;
  window.resolveLegacySchoolIdentity=function(saved={}){
   if(saved.identityRevision===official.identityRevision)return {...official,...saved};
   return {...official,...saved,identityRevision:official.identityRevision,sansthaName:official.sansthaName,schoolName:official.schoolName,school:official.school,managedBy:'',address:official.address,logo:official.logo};
