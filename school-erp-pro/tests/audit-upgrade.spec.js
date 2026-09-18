@@ -54,7 +54,7 @@ test("student import requires validation and acknowledgement; safe bulk update p
   await page.getByRole("button", { name: "Import Excel", exact: true }).click(); await page.getByLabel("Import operation").selectOption("update");
   await page.getByLabel("Upload Excel", { exact: true }).setInputFiles(csv("GR No,Name,Mobile,Address\nNEW-001,Do not overwrite name,9876543211,")); await page.getByRole("button", { name: "Validate", exact: true }).click(); await page.getByLabel("Action row 2").selectOption("update"); await page.getByLabel("I reviewed all rows and before/after changes. Save only the selected actions.").check(); await page.getByRole("button", { name: "Confirm Import", exact: true }).click();
   const updated = (await stored(page, "erp_pro_students")).find(s => s.grNo === "NEW-001"); expect(updated.id).toBe(imported.id); expect(updated.name).toBe("New Learner"); expect(updated.mobile).toBe("9876543211"); expect(updated.student_name_mr).toBe("नवा विद्यार्थी");
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download All Students", exact: true }).click()]); const book = XLSX.read(await fs.readFile(await download.path())); expect(XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]])).toHaveLength(before.length + 1);
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export Excel", exact: true }).click()]); const book = XLSX.read(await fs.readFile(await download.path())); expect(XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]])).toHaveLength(before.length + 1);
 });
 
 test("file duplicates and stale preview cannot silently save", async ({ page }) => {

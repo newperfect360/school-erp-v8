@@ -1,8 +1,10 @@
 import Icon from "../components/Icon";
+import {officialIdentity} from '../services/schoolIdentity';
 import { useLanguage } from "./language";
 
 export function SchoolMark({ logo, large = false }) {
-  return <div className={`school-seal${large ? " large" : ""}`}>{logo ? <img src={logo} alt="School logo" /> : <svg viewBox="0 0 56 64" fill="none" aria-hidden="true"><path d="M5 5h46v30c0 12-12 20-23 26C17 55 5 47 5 35V5Z" stroke="currentColor" strokeWidth="1.6"/><path d="M10 10h36v25c0 9-9 16-18 21-9-5-18-12-18-21V10Z" stroke="currentColor" strokeOpacity=".4"/><path d="m16 21 12-6 12 6-12 6-12-6Z" fill="currentColor"/><path d="M19 24v7c6 4 12 4 18 0v-7M28 38v10m0-8c-4-4-9-4-13-3v9c5-1 9 0 13 3 4-3 8-4 13-3v-9c-4-1-9-1-13 3Z" stroke="currentColor" strokeWidth="1.5"/></svg>}</div>;
+  logo = logo || officialIdentity.logo;
+  return <div className={`school-seal${large ? " large" : ""}`}>{logo ? <img src={logo} alt="School logo" /> : null}</div>;
 }
 
 export function Avatar({ name = "", photo, size = "normal", tone = "blue" }) {

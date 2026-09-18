@@ -10,17 +10,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.gbsschool.app.R
 
 @Composable
-fun SchoolBrand() {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Image(painterResource(R.drawable.ic_school_crest), null, Modifier.size(48.dp))
+fun SchoolBrand(modifier: Modifier = Modifier) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Image(painterResource(R.drawable.official_school_logo), "Official school logo", Modifier.width(54.dp).height(59.dp), contentScale = ContentScale.Fit)
         Column {
-            Text("GBS SCHOOL", style = MaterialTheme.typography.titleLarge)
-            Text("Learn. Grow. Inspire.", style = MaterialTheme.typography.bodyMedium, color = Muted)
+            Text(stringResource(R.string.institution_name_mr), style = MaterialTheme.typography.labelSmall, color = Muted)
+            Text(stringResource(R.string.school_name_mr), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.school_address_mr), style = MaterialTheme.typography.bodySmall, color = Muted)
         }
     }
 }

@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.gbsschool.app.R
 import com.gbsschool.app.core.designsystem.*
 import com.gbsschool.app.data.PreviewSchoolData
 
@@ -47,7 +49,7 @@ fun DashboardScreen(onExit: () -> Unit) {
             LazyColumn(Modifier.widthIn(max = 840.dp).fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        SchoolBrand()
+                        SchoolBrand(Modifier.weight(1f))
                         IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Outlined.Logout, "Exit preview") }
                     }
                 }
@@ -121,7 +123,7 @@ fun DashboardScreen(onExit: () -> Unit) {
                         }
                     }
                 }
-                item { Text("GBS SCHOOL  •  Learning together", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp)) }
+                item { Text(stringResource(R.string.school_name_mr), color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp)) }
             }
         }
     }

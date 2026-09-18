@@ -4,19 +4,7 @@ import { readStored, writeStored } from "../storage";
 
 export default function Settings({ onSaved }) {
   const [imageLoading, setImageLoading] = useState(false);
-  const [settings, setSettings] = useState(() => readStored("schoolSettings", {
-    schoolName: "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय",
-    sansthaName: "स्व. अमानउल्ला मोतीवाला शिक्षण प्रसारक मंडळ, औरंगाबाद",
-    address: "नायगाव (भिकापूर), ता. जि. छत्रपती संभाजीनगर",
-    principal: "",
-    whatsappApiUrl: "",
-    whatsappToken: "",
-    smsApiUrl: "",
-    smsSenderId: "",
-    email: "",
-    website: "",
-    logo: "",
-  }));
+  const [settings, setSettings] = useState(() => readStored("schoolSettings", {}));
 
   const change = (e) => {
     const { name, value, files } = e.target;
@@ -53,10 +41,10 @@ export default function Settings({ onSaved }) {
       <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>शाळेच्या सेटिंग्ज</h2><p>शाळेची माहिती आणि संपर्क configuration</p></div></div>
 
       <div className="form-grid">{[["schoolCode", "School Code / शाळा संकेतांक"], ["udise", "UDISE"], ["academicYear", "Academic Year / शैक्षणिक वर्ष"]].map(([name,label]) => <label key={name}>{label}<input name={name} value={settings[name] || ""} onChange={change} /></label>)}
-        <label>संस्थेचे नाव<input name="sansthaName" placeholder="संस्थेचे नाव" value={settings.sansthaName} onChange={change} /></label>
+        <label>संस्थेचे नाव<textarea name="sansthaName" value={settings.sansthaName} onChange={change} rows={3}/></label>
         <label>शाळेचे नाव<input name="schoolName" placeholder="शाळेचे नाव" value={settings.schoolName} onChange={change} /></label>
         <label>पत्ता<input name="address" placeholder="पत्ता" value={settings.address} onChange={change} /></label>
-        <label>मुख्याध्यापक नाव<input name="principal" placeholder="मुख्याध्यापक नाव" value={settings.principal} onChange={change} /></label>
+        {[['institutionNameEn','Institution Name English'],['schoolNameEn','School Name English'],['addressEn','School Address English'],['contactNumber','Contact Number']].map(([name,label])=><label key={name}>{label}<input name={name} value={settings[name]||''} onChange={change}/></label>)}<p>Official Marathi names are used until approved English names are entered. Institution, school and address are shared by all pages and documents.</p><label>मुख्याध्यापक नाव<input name="principal" placeholder="मुख्याध्यापक नाव" value={settings.principal} onChange={change} /></label>
         <label>Email<input name="email" placeholder="Email" value={settings.email} onChange={change} /></label>
         <label>Website<input name="website" placeholder="Website" value={settings.website} onChange={change} /></label>
         <label>WhatsApp API URL<input name="whatsappApiUrl" placeholder="WhatsApp API URL" value={settings.whatsappApiUrl} onChange={change} /></label>

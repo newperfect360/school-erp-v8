@@ -6,9 +6,9 @@ Usage:
 2) Settings मधून संस्था/शाळेचे नाव बदलल्यास certificate header auto बदलू शकतो.
 */
 window.ERP_MASTER_SETTINGS = {
-  "sansthaName": "स्व. अमानजल्ला मोतीवाला शिक्षण प्रसारक मंडळ, औरंगाबाद",
-  "schoolName": "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय",
-  "address": "नायगाव (भिकापूर), ता. जि. छत्रपती संभाजीनगर",
+  sansthaName:window.SCHOOL_IDENTITY.sansthaName,
+  schoolName:window.SCHOOL_IDENTITY.schoolName,
+  address:window.SCHOOL_IDENTITY.address,
   "email": "late.gbsschoolnaigaon03@gmail.com",
   "medium": "मराठी",
   "academicYear": "2025 - 26",

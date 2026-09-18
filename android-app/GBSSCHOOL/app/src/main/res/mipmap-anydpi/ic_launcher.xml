@@ -1,6 +1,2 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="64" android:viewportHeight="64">
-    <path android:fillColor="#203A55" android:pathData="M0,0h64v64h-64z" />
-    <path android:fillColor="#00000000" android:strokeColor="#E4C48A" android:strokeWidth="2" android:pathData="M13,8h38v26Q51,47 32,57Q13,47 13,34Z" />
-    <path android:fillColor="#E4C48A" android:pathData="M19,23L32,17L45,23L32,29Z" />
-    <path android:fillColor="#00000000" android:strokeColor="#E4C48A" android:strokeWidth="2" android:pathData="M32,41v8M32,41Q26,37 20,39v8Q26,45 32,49Q38,45 44,47v-8Q38,37 32,41" />
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"><item android:drawable="@android:color/white" /><item android:width="44.125dp" android:height="48dp" android:gravity="center" android:drawable="@drawable/official_school_logo" /></layer-list>

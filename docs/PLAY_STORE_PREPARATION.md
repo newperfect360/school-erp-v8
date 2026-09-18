@@ -4,7 +4,7 @@ Current distribution is a debug UI preview. No signed production AAB is generate
 
 | Item | Prepared / outstanding |
 |---|---|
-| App name | GBSSCHOOL (current launcher label: GBS School) |
+| App name | Official Marathi school name (generated from assets/school-identity.json) |
 | Application ID | `com.gbsschool.app` |
 | Version | 1.0.0 / 1; increment code for subsequent store uploads |
 | UI assets | Compose school crest, adaptive/legacy launcher icons and monochrome icon exist; approved school artwork still required |

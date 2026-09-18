@@ -1,10 +1,10 @@
 
 /* School ERP V33 Final Header + Templates Addon */
 window.ERP_V33_SETTINGS = {
-  "sansthaName": "स्व. अमानजल्ला मोतीवाला शिक्षण प्रसारक मंडळ, औरंगाबाद",
-  "managedBy": "संचलित",
-  "schoolName": "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय",
-  "address": "नायगाव (भिकापूर), ता. जि. छत्रपती संभाजीनगर",
+  sansthaName:window.SCHOOL_IDENTITY.sansthaName,
+  managedBy:"",
+  schoolName:window.SCHOOL_IDENTITY.schoolName,
+  address:window.SCHOOL_IDENTITY.address,
   "academicYear": "2025 - 26",
   "email": "late.gbsschoolnaigaon03@gmail.com",
   "medium": "मराठी",
@@ -12,7 +12,7 @@ window.ERP_V33_SETTINGS = {
   "slogan": "विद्यार्थ्यांची गुणवत्ता, शिस्त आणि सर्वांगीण विकास हेच आमचे ध्येय."
 };
 window.ERP_V33_TEMPLATES = {
-  "homework": "🏫 {SANSTHA}\nसंचलित\n{SCHOOL}\n{ADDRESS}\n\nआदरणीय पालक,\nइयत्ता {CLASS} {SUBJECT} विषयाची आजची माहिती:\nवर्गात झालेले अध्यापन: {CLASSWORK}\nदिलेला गृहपाठ: {HOMEWORK}\n\nविद्यार्थ्यांच्या शैक्षणिक प्रगतीसाठी आपले सहकार्य अपेक्षित आहे.\n\nविषय शिक्षक: {SUBJECT_TEACHER}\nवर्गशिक्षक: {CLASS_TEACHER}\n{SCHOOL}\n🌟 {SLOGAN}",
+  "homework": "🏫 {SANSTHA}\n{SCHOOL}\n{ADDRESS}\n\nआदरणीय पालक,\nइयत्ता {CLASS} {SUBJECT} विषयाची आजची माहिती:\nवर्गात झालेले अध्यापन: {CLASSWORK}\nदिलेला गृहपाठ: {HOMEWORK}\n\nविद्यार्थ्यांच्या शैक्षणिक प्रगतीसाठी आपले सहकार्य अपेक्षित आहे.\n\nविषय शिक्षक: {SUBJECT_TEACHER}\nवर्गशिक्षक: {CLASS_TEACHER}\n{SCHOOL}\n🌟 {SLOGAN}",
   "attendance_absent": "🏫 {SANSTHA}\nसंचलित\n{SCHOOL}\n{ADDRESS}\n\nआदरणीय पालक,\n{STUDENT} दिनांक {DATE} रोजी शाळेत अनुपस्थित आहे. कृपया अनुपस्थितीचे कारण वर्गशिक्षकांना कळवावे.\n\nवर्गशिक्षक: {CLASS_TEACHER}\n{SCHOOL}\n🌟 {SLOGAN}",
   "attendance_present": "🏫 {SANSTHA}\nसंचलित\n{SCHOOL}\n{ADDRESS}\n\nआदरणीय पालक,\n{STUDENT} दिनांक {DATE} रोजी शाळेत उपस्थित आहे.\n\nवर्गशिक्षक: {CLASS_TEACHER}\n{SCHOOL}\n🌟 {SLOGAN}",
   "fee_due": "🏫 {SANSTHA}\nसंचलित\n{SCHOOL}\n{ADDRESS}\n\nआदरणीय पालक,\n{STUDENT} यांची फी ₹{BALANCE} बाकी आहे. कृपया लवकरात लवकर भरणा करावा.\n\nकार्यालय\n{SCHOOL}\n🌟 {SLOGAN}",
@@ -68,8 +68,8 @@ function installV33HeaderTemplates(){
 function erpV33ApplyHeader(){
   const s = JSON.parse(localStorage.getItem("v33_school_settings") || JSON.stringify(window.ERP_V33_SETTINGS));
   const headerHtml = `
-    <div class="erp-v33-top">
-      <div class="sanstha">${s.sansthaName}</div>
+    <div class="erp-v33-top"><img src="assets/school-logo.jpg" alt="School logo" style="width:72px;height:78px;object-fit:contain">
+      <div class="sanstha" style="white-space:pre-line">${s.sansthaName}</div>
       <div class="managed">${s.managedBy}</div>
       <div class="school">${s.schoolName}</div>
       <div class="address">${s.address}</div>

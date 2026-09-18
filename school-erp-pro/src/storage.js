@@ -1,3 +1,4 @@
+import {resolveSchoolSettings} from './services/schoolIdentity';
 import { notify } from "./components/Feedback";
 import { useRef, useState } from "react";
 import {tagNewYearRecords,yearForDate,academicYears} from './services/academicYears';
@@ -5,18 +6,19 @@ import {tagNewYearRecords,yearForDate,academicYears} from './services/academicYe
 export function readStored(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
-    if (raw === null) return fallback;
+    if (raw === null) return key === "schoolSettings" ? resolveSchoolSettings(fallback) : fallback;
     const value = JSON.parse(raw);
     if (Array.isArray(fallback) ? !Array.isArray(value) : !value || typeof value !== "object" || Array.isArray(value)) {
       throw new Error("Invalid saved data");
     }
-    return Array.isArray(fallback) ? value : { ...fallback, ...value };
+    return key === "schoolSettings" ? resolveSchoolSettings(value) : Array.isArray(fallback) ? value : { ...fallback, ...value };
   } catch {
-    return fallback;
+    return key === "schoolSettings" ? resolveSchoolSettings(fallback) : fallback;
   }
 }
 
 export function writeStored(key, value) {
+  if(key === "schoolSettings")value=resolveSchoolSettings(value);
   try {
     const existing = localStorage.getItem(key);
     if (existing !== null) {

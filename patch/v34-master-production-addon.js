@@ -5,10 +5,10 @@
 */
 (function(){
 const SETTINGS = {
-  sansthaName:"स्व. अमानजल्ला मोतीवाला शिक्षण प्रसारक मंडळ, औरंगाबाद",
-  managedBy:"संचलित",
-  schoolName:"स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय",
-  address:"नायगाव (भिकापूर), ता. जि. छत्रपती संभाजीनगर",
+  sansthaName:window.SCHOOL_IDENTITY.sansthaName,
+  managedBy:"",
+  schoolName:window.SCHOOL_IDENTITY.schoolName,
+  address:window.SCHOOL_IDENTITY.address,
   email:"late.gbsschoolnaigaon03@gmail.com",
   medium:"मराठी",
   academicYear:"2025 - 26",
@@ -21,7 +21,6 @@ const SETTINGS = {
 
 const MSG_TEMPLATES = {
 homework:`🏫 {SANSTHA}
-संचलित
 {SCHOOL}
 {ADDRESS}
 
@@ -73,7 +72,7 @@ function getStudents(){
 function getSettings(){
   let s = {};
   try { s = JSON.parse(localStorage.getItem("v32_settings")||"{}"); } catch(e){}
-  return Object.assign({}, SETTINGS, s);
+  return window.resolveLegacySchoolIdentity(Object.assign({}, SETTINGS, s));
 }
 function saveDefaults(){
   localStorage.setItem("v34_school_settings", JSON.stringify(getSettings()));
@@ -82,8 +81,8 @@ function saveDefaults(){
   localStorage.setItem("v34_templates", JSON.stringify(Object.assign({}, MSG_TEMPLATES, old)));
 }
 function headerHtml(s){
-  return `<div class="v34-letterhead">
-    <div class="trust">${s.sansthaName}</div>
+  return `<div class="v34-letterhead"><img src="assets/school-logo.jpg" alt="School logo" style="width:72px;height:78px;object-fit:contain">
+    <div class="trust" style="white-space:pre-line">${s.sansthaName}</div>
     <div class="managed">${s.managedBy}</div>
     <div class="school">${s.schoolName}</div>
     <div class="addr">${s.address}</div>

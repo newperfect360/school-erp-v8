@@ -45,7 +45,7 @@ import {prepareDailyMessages} from "./services/messageStore";
 import {notify} from "./components/Feedback";
 
 const pages = { AcademicYears, EmergencyContacts, Lifecycle: StudentLifecycle, LongAbsence, PhotoImport, Automation: AutomationSettings, Checkout: StudentCheckout, Fees, Meetings: ParentInteractions, Visits: ParentInteractions, PortalInfo, PortalContent, Academics, Students, Teachers, Attendance, Homework, Classwork, Certificates, Formats: SchoolFormats, Admissions: GeneralRegister, Scholarships, Communications, AccessSetup, Backup: BackupRestore, Results, IDCard, Reports, Parents, Trips, Sports, Library };
-const defaults = { schoolName: "स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय", sansthaName: "स्व. अमानउल्ला मोतीवाला शिक्षण प्रसारक मंडळ", address: "नायगाव (भिकापूर), छत्रपती संभाजीनगर", principal: "मुख्याध्यापक", logo: "" };
+const defaults = {};
 
 export default function App() {
   const [settings,setSettings]=useState(()=>readStored("schoolSettings",defaults));

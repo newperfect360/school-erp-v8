@@ -34,13 +34,13 @@ export default function Students({ studentId, mode: initialMode, initialClass = 
     if(!["fatherMobile","motherMobile","emergencyContact","mobile","guardianMobile"].some(k=>form[k]))return notify("Save at least one parent or emergency phone number.");
     for (const field of ["fatherWhatsapp", "motherWhatsapp", "mobile", "whatsapp", "fatherMobile", "motherMobile", "guardianMobile", "alternateMobile", "emergencyContact"]) if (form[field] && normalizeMobile(form[field]) === null) return notify(`Invalid ${field}.`);
     if(form.academicYear && !normalizeYear(form.academicYear)) return notify("Use a valid academic year such as 2026-27.");
-    if(!/^(?:[1-9]|1[0-2])$/.test(form.className)) return notify("Choose standard 1?12.");
-    const record = bilingualStudent({ ...form, academicYear:normalizeYear(form.academicYear)||currentAcademicYear(), name: form.name.trim(), grNo: form.grNo.trim(), student_name_en: form.name.trim(), id: form.id || crypto.randomUUID(), updatedAt: new Date().toISOString() });
+    if(!/^(?:[1-9]|1[0-2])$/.test(form.className)) return notify("Choose standard 1–12.");
+    const record = bilingualStudent({ ...form, academicYear:normalizeYear(form.academicYear)||(form.id?"":currentAcademicYear()), name: form.name.trim(), grNo: form.grNo.trim(), student_name_en: form.name.trim(), id: form.id || crypto.randomUUID(), updatedAt: new Date().toISOString() });
     const previous=students.find(s=>s.id===form.id);
     const changed=previous&&['className','division','rollNo','academicYear','status'].some(k=>String(previous[k]||'')!==String(record[k]||''));
     if(changed)return notify('Use Student Lifecycle for class, roll, academic-year or status changes so history is preserved.');
     if(previous){if(!saveStudents(students.map(s=>s.id===record.id?record:s)))return;}else{try{commitStoredBatch({erp_pro_students:[...students,{...record,status:record.status||'Active'}],erp_pro_student_movements:[...readStored('erp_pro_student_movements',[]),{id:crypto.randomUUID(),studentId:record.id,studentName:record.name,grNo:record.grNo,action:'Added',type:'Added',oldValue:null,newValue:enrollment(record),actor:'local-review',createdAt:new Date().toISOString()}]},{erp_pro_students:JSON.stringify(students)===JSON.stringify(readStored('erp_pro_students',[]))?localStorage.getItem('erp_pro_students'):'STALE'});reloadStudents()}catch(e){notify(e.message);return;}}
-    recordAudit(form.id ? "Student updated" : "Student created", { studentId: record.id }); setForm({}); setQuery(record.grNo); setMode("directory"); notify("Student saved.");
+    recordAudit(form.id ? "Student updated" : "Student created", { studentId: record.id }); setForm({}); setClassFilter(""); setDivisionFilter(""); setShowArchived(!lifecycleActive(record)); setQuery(record.grNo); setMode("directory"); notify("Student saved.");
   };
   const archive = id => {
     const student = students.find(s => s.id === id);
@@ -54,7 +54,7 @@ export default function Students({ studentId, mode: initialMode, initialClass = 
     reader.onload = () => { setForm(previous => ({ ...previous, photo: reader.result })); setImageLoading(false); };
     reader.onerror = () => { notify("Photo could not be read."); setImageLoading(false); }; reader.readAsDataURL(file);
   };
-  if (mode === "import") return <StudentImport onNavigate={onNavigate} onBack={() => setMode("directory")} onDone={() => { reloadStudents(); setMode("directory"); }} />;
+  if (mode === "import") return <StudentImport onNavigate={onNavigate} onBack={() => setMode("directory")} onDone={() => { reloadStudents(); setQuery(""); setClassFilter(""); setDivisionFilter(""); setShowArchived(false); setMode("directory"); }} />;
   const selected = students.find(s => String(s.id) === String(selectedId));
   const actions = student => <StudentActions student={student} onEdit={edit} onArchive={archive} onAction={(student,type)=>setAction({student,type})}/>;
   const dialog = action && <StudentChangeDialog key={action.student.id+action.type} student={action.student} action={action.type} role={role} onClose={()=>setAction(null)} onSaved={()=>{reloadStudents();setAction(null)}}/>;

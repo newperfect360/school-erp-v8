@@ -1,4 +1,4 @@
-# GBS School — Android milestone 1
+# Android school application — milestone 1
 
 **Current test package: 1.0.0 (code 1).** Debug-signed APK and checksums are in `../../releases/android/`. See [release preparation and limitations](../../docs/RELEASE_PREPARATION.md) and [Play Store preparation](../../docs/PLAY_STORE_PREPARATION.md). Four Compose/Robolectric tests now pass, including a large high-density phone with enlarged text. No physical-device installation, real sign-in or native school module functionality is claimed.
 

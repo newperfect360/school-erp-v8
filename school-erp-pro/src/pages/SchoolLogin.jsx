@@ -18,7 +18,7 @@ export default function SchoolLogin({ settings, onLogin }) {
   };
   return <div className="academic-login">
     <aside className="login-campus">
-      <div className="login-school-brand"><SchoolMark logo={settings.logo} large /><div><strong>{settings.schoolName}</strong><span>{t("SECONDARY & HIGHER SECONDARY SCHOOL", "माध्यमिक व उच्च माध्यमिक विद्यालय")}</span></div></div>
+      <div className="login-school-brand"><SchoolMark logo={settings.logo} large /><div><small className="official-institution">{settings.sansthaName}</small><strong>{settings.schoolName}</strong><span>{settings.address}</span><span>{t("SECONDARY & HIGHER SECONDARY SCHOOL", "माध्यमिक व उच्च माध्यमिक विद्यालय")}</span></div></div>
       <div className="campus-message"><span className="academic-eyebrow">{t("ONE SCHOOL. A WORLD OF POSSIBILITIES.", "एक शाळा. असंख्य शक्यता.")}</span><h1>{t("A little more time", "शिक्षणासाठी वेळ.")}<br /><em>{t("for what matters.", "प्रगतीसाठी साथ.")}</em></h1><p>{t("Bring your school day together. More connection, less paperwork, and every student in focus.", "शाळेचे प्रत्येक काम एकाच ठिकाणी. अधिक संवाद, कमी कागदपत्रे आणि प्रत्येक विद्यार्थ्याच्या प्रगतीकडे लक्ष.")}</p></div>
       <CampusIllustration />
       <div className="campus-caption"><span>{t("Learning · Growing · Together", "शिकूया · घडूया · एकत्र")}</span><span>{settings.address}</span></div>

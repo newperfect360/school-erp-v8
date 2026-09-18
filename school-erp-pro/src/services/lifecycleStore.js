@@ -1,6 +1,6 @@
 import {readStored,commitStoredBatch} from '../storage';
 import {planMovement,lifecycleActive} from './studentLifecycle';
-export const lifecycleKeys=['erp_pro_students','erp_pro_student_movements','erp_pro_academic_history','erp_pro_results','erp_pro_attendance'];
+export const lifecycleKeys=['erp_pro_students','erp_pro_student_movements','erp_pro_academic_history','erp_pro_results','erp_pro_attendance','erp_pro_academic_years','erp_pro_academic_context'];
 export const lifecycleSource=()=>Object.fromEntries(lifecycleKeys.map(k=>[k,localStorage.getItem(k)]));
 export function previewMovements(ids,change){
  const source=lifecycleSource(),students=readStored('erp_pro_students',[]),results=readStored('erp_pro_results',[]),attendance=readStored('erp_pro_attendance',{});

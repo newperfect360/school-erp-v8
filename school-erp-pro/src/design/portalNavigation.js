@@ -24,11 +24,14 @@ portalGroups.find(g=>g.en==='More').items.push(...staff.items,...scholarship.ite
 portalGroups.splice(portalGroups.indexOf(staff),1);portalGroups.splice(portalGroups.indexOf(scholarship),1);
 portalGroups.splice(4,0,{en:'Exam',mr:'परीक्षा',icon:'file',items:[item('Exams & Results','परीक्षा व निकाल','Results'),item('Marks Entry','गुण नोंद','Results'),format('Progress Cards','प्रगती पत्रके','Progress Card'),format('Annual Results','वार्षिक निकाल','Annual Result')]});
 // Keep the primary school navigation in a stable administrative order.
-portalGroups.push({en:'Exam',mr:'???????',icon:'book',items:[item('Exam & Marks Entry','??????? ? ???','Results'),item('Exam Timetable','??????? ?????????','Timetable')]},{en:'Results',mr:'?????',icon:'chart',items:[item('Student Results','?????????? ?????','Results'),format('Result Documents','????? ?????????','Progress Card')]});
+portalGroups.push({en:'Results',mr:'निकाल',icon:'chart',items:[item('Student Results','विद्यार्थी निकाल','Results'),format('Result Documents','निकाल कागदपत्रे','Progress Card')]});
 const primaryOrder=['About','Students','Academics','Attendance','Exam','Results','Sports','Educational Trip','Library','Parents','Certificates','Reports','More'];
 const scholarshipAgain=portalGroups.find(g=>g.en==='Scholarship'),more=portalGroups.find(g=>g.en==='More');
 if(scholarshipAgain&&more){more.items.push(...scholarshipAgain.items);portalGroups.splice(portalGroups.indexOf(scholarshipAgain),1);}
+const facilitiesGroup=portalGroups.find(g=>g.en==='Facilities');
+if(facilitiesGroup&&more){more.items.push(...facilitiesGroup.items);portalGroups.splice(portalGroups.indexOf(facilitiesGroup),1);}
 portalGroups.sort((a,b)=>primaryOrder.indexOf(a.en)-primaryOrder.indexOf(b.en));
+for(const group of portalGroups){const seen=new Set();group.items=group.items.filter(entry=>{const key=entry.en+'|'+entry.page+'|'+JSON.stringify(entry.options);if(seen.has(key))return false;seen.add(key);return true;});}
 const studentMenu=portalGroups.find(g=>g.en==='Students');
 studentMenu.items.sort((a,b)=>{const order=['Student Master','Add Student','Excel Import','Photo Folder Import'];const rank=x=>order.includes(x.en)?order.indexOf(x.en):4;return rank(a)-rank(b)});
 

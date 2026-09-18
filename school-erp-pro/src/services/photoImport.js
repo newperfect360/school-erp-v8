@@ -1,4 +1,14 @@
 const key = value => String(value ?? '').trim().normalize('NFKC').toLowerCase();
+export async function imageData(file) {
+ const bitmap=await createImageBitmap(file);
+ try {
+  if(bitmap.width*bitmap.height>25000000)throw Error('Image dimensions too large');
+  const canvas=document.createElement('canvas'),scale=Math.min(1,480/Math.max(bitmap.width,bitmap.height));
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  return canvas.toDataURL('image/jpeg',.84);
+ } finally {bitmap.close()}
+}
 export function matchPhotos(students, files, field='photoNumber') {
  const allowed=new Set(['photoNumber','grNo','admissionNo','id']);if(!allowed.has(field))throw Error('Invalid photo matching field.');
  const index=new Map();for(const s of students.filter(s=>!s.archivedAt)){const value=key(s[field]);if(value){const list=index.get(value)||[];list.push(s);index.set(value,list)}}

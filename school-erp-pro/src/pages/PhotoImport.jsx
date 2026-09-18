@@ -1,10 +1,9 @@
 import {useState} from 'react';
 import {readStored,commitStoredBatch} from '../storage';
-import {matchPhotos} from '../services/photoImport';
+import {matchPhotos,imageData} from '../services/photoImport';
 import {exportRows} from '../services/excel';
 import {PageHeading} from '../design/SchoolUI';
 import {notify} from '../components/Feedback';
-async function imageData(file){const bitmap=await createImageBitmap(file);try{if(bitmap.width*bitmap.height>25000000)throw Error('Image dimensions too large');const canvas=document.createElement('canvas'),scale=Math.min(1,480/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.84)}finally{bitmap.close()}}
 export default function PhotoImport({onNavigate}){
  const[field,setField]=useState('photoNumber'),[files,setFiles]=useState([]),[review,setReview]=useState(null),[choices,setChoices]=useState({}),[ack,setAck]=useState(false),[busy,setBusy]=useState(false);
  const validate=async()=>{setReview(null);setAck(false);setBusy(true);try{if(!files.length||files.length>500)throw Error('Select between 1 and 500 images.');const source=localStorage.getItem('erp_pro_students'),students=source===null?[]:JSON.parse(source);if(!Array.isArray(students))throw Error('Student Master cannot be read.');const result=matchPhotos(students,files,field);let total=0;for(const row of result.rows){if(row.error)continue;try{row.photo=await imageData(files[row.index]);total+=row.photo.length;if(total>8*1024*1024)throw Error('Batch too large. Import smaller batches.')}catch(e){row.error=e.message;row.status='Invalid file'}}setChoices(Object.fromEntries(result.rows.map(r=>[r.index,r.error||r.existing?'skip':'attach'])));const validIds=new Set(result.rows.filter(r=>!r.error).map(r=>r.student.id));setReview({...result,missing:students.filter(s=>!s.archivedAt&&!validIds.has(s.id)),source,students})}catch(e){notify(e.message)}finally{setBusy(false)}};

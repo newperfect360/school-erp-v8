@@ -25,6 +25,19 @@ import java.io.File
 class SchoolUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun officialIdentityAndSplashDrawable() {
+        compose.setContent { SchoolTheme { SchoolApp() } }
+        compose.onNodeWithText(compose.activity.getString(R.string.school_name_mr)).assertExists()
+        compose.onNodeWithText(compose.activity.getString(R.string.institution_name_mr)).assertExists()
+        val bitmap = Bitmap.createBitmap(411, 915, Bitmap.Config.ARGB_8888)
+        val drawable = compose.activity.getDrawable(R.drawable.official_splash)!!
+        drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+        drawable.draw(Canvas(bitmap))
+        val directory = File("../artifacts").apply { mkdirs() }
+        File(directory, "splash-resource.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
+        bitmap.recycle()
+    }
+
     @Test
     @Config(sdk = [35], qualifiers = "w480dp-h1040dp-xxhdpi")
     fun largePhoneWithEnlargedTextKeepsNavigationReachable() {

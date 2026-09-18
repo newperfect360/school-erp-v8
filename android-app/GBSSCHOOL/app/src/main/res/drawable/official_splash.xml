@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/white" />
+    <item android:width="141.2dp" android:height="153.6dp" android:gravity="center" android:drawable="@drawable/official_school_logo" />
+</layer-list>

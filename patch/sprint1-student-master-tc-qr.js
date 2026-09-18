@@ -182,7 +182,7 @@ function verifyFromHash(){
       <h2>${s.name}</h2>
       <p>इयत्ता: ${s.className||s.currentClass}</p>
       <p>प्रवेश क्रमांक: ${s.admissionNo}</p>
-      <p>शाळा: स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय</p>
+      <p>शाळा: ${String(window.SCHOOL_IDENTITY.schoolName)}</p>
       <h3>Verification Status: VALID</h3>
     ` : `<h2>Record Not Found</h2>`}
   </div>`;
