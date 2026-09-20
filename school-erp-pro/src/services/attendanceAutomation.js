@@ -53,7 +53,7 @@ export const automationTemplates = {
 automationTemplates['Saturday School Closed'] = [...automationTemplates['School Closed']];
 export const classKey = (year, standard, division) => JSON.stringify([year, standard, division || '']);
 export const draftId = (year, date, studentId) => JSON.stringify([year, date, String(studentId)]);
-export function mergedAutomation(value = {}) { return { ...automationDefaults, ...value, dryRun: true, weekdays: { ...defaultTiming, ...value.weekdays }, saturday: { ...automationDefaults.saturday, ...value.saturday } }; }
+export function mergedAutomation(value = {}) { return structuredClone({ ...automationDefaults, ...value, dryRun: true, weekdays: { ...defaultTiming, ...value.weekdays }, saturday: { ...automationDefaults.saturday, ...value.saturday } }); }
 const validTime = time => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time || '');
 export function validateAutomation(config) {
   for (const timing of [config.weekdays, config.saturday, ...Object.values(config.overrides)]) {
@@ -67,7 +67,7 @@ export function validateAutomation(config) {
   return true;
 }
 export function daySchedule(date, config) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) throw Error('Invalid date.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0,10)!==date) throw Error('Invalid date.');
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
   if (config.holidays[date]) return { closed: true, ...config.holidays[date] };
   if (config.overrides[date]) return { ...config.overrides[date], closed: false, special: true };
@@ -83,6 +83,9 @@ export function planMessages(events, students, school, config, previous = [], ac
   const jobs = [...previous], ids = new Set(previous.map(job => job.key));
   for (const event of events) {
     if (!config.enabledEvents.includes(event.type)) continue;
+    // An event's recipients are frozen when first prepared; changed preferences
+    // must not cause the scheduler to prepare the same event again.
+    if (previous.some(job=>job.eventKey===event.key)) continue;
     const student = students.find(row => String(row.id) === String(event.studentId));
     if (student && !config.enabledClasses.includes(classKey(student.academicYear, student.className, student.division))) continue;
     const recipients = event.staff ? config.managementRecipients.filter(row => row.enabled && (event.type === 'Staff Absent' ? row.absence : event.type === 'Staff Late' ? row.late : row.summary)) : student ? (() => {
@@ -95,19 +98,30 @@ export function planMessages(events, students, school, config, previous = [], ac
       const channels = recipient.channel === 'both' ? ['sms','whatsapp'] : [recipient.channel === 'whatsapp' ? 'whatsapp' : 'sms'];
       for (const channel of channels) {
         const mobile = normalizeParentMobile(channel === 'whatsapp' && recipient.whatsapp ? recipient.whatsapp : recipient.mobile);
-        const key = JSON.stringify([event.key, recipient.id || mobile, channel]); if (ids.has(key)) continue;
+        const key = JSON.stringify([event.key, mobile || recipient.id, channel]); if (ids.has(key)) continue;
         const fields = { school_name: school.schoolName, student_name: student?.name, class: student?.className, division: student?.division || '-', ...event.fields };
         const message = messageFor(event.type, fields, config, recipient.language || config.language);
         const missing = message.match(/\{[a-z_]+\}/g) || [];
-        jobs.push({ id: crypto.randomUUID(), key, eventKey: event.key, type: event.type, studentId: student?.id, staffId: event.staffId, studentName: student?.name || event.fields.staff_name || 'Staff summary', recipient: recipient.name, parentMobile: mobile, parentName: recipient.name, message, channel, status: mobile && !missing.length ? 'Queued' : 'Failed', dryRun: true, attempts: 0, failureReason: !mobile ? 'Valid recipient mobile required' : missing.length ? `Missing fields: ${missing.join(', ')}` : 'DRY RUN — not sent', initiatedBy: actor, initiatedAt: new Date().toISOString(), date: event.fields.date });
+        jobs.push({ id: crypto.randomUUID(), key, eventKey: event.key, type: event.type, sourceEvent:event, contactId:recipient.id, language:recipient.language||config.language, studentId: student?.id, staffId: event.staffId, studentName: student?.name || event.fields.staff_name || 'Staff summary', recipient: recipient.name, parentMobile: mobile, parentName: recipient.name, message, channel, status: mobile && !missing.length ? 'Queued' : 'Failed', dryRun: true, attempts: 0, failureReason: !mobile ? 'Valid recipient mobile required' : missing.length ? `Missing fields: ${missing.join(', ')}` : 'DRY RUN — not sent', initiatedBy: actor, initiatedAt: new Date().toISOString(), date: event.fields.date });
         ids.add(key);
       }
     }
   }
   return jobs;
 }
+export function retryDryRun(job,students,school,config) {
+  if(!job.dryRun||job.status!=='Failed'||(job.attempts||0)>=config.maxRetries)throw Error('Job is not eligible for retry.');
+  const student=students.find(s=>String(s.id)===String(job.studentId));
+  const contact=job.sourceEvent.staff?config.managementRecipients.find(r=>r.id===job.contactId&&r.enabled):student&&parentContacts(student,student.primaryNotificationContact).find(c=>job.contactId==='missing'?!!c.mobile:c.id===job.contactId);
+  const mobile=normalizeParentMobile(job.channel==='whatsapp'&&contact?.whatsapp?contact.whatsapp:contact?.mobile);
+  const message=messageFor(job.type,{school_name:school.schoolName,student_name:student?.name,class:student?.className,division:student?.division||'-',...job.sourceEvent.fields},config,job.language);
+  const missing=message.match(/\{[a-z_]+\}/g)||[];
+  const scope=student?config.enabledClasses.includes(classKey(student.academicYear,student.className,student.division)):!!contact;
+  const valid=scope&&config.enabledEvents.includes(job.type)&&mobile&&!missing.length;
+  return {...job,parentMobile:mobile,recipient:contact?.name||job.recipient,message,attempts:(job.attempts||0)+1,lastAttemptAt:new Date().toISOString(),status:valid?'Queued':'Failed',failureReason:valid?'DRY RUN — not sent':!scope?'Recipient or trial scope disabled':!mobile?'Valid recipient mobile required':`Disabled event or missing fields: ${missing.join(', ')}`};
+}
 export function attendanceEvents(rows, year, date) {
-  return rows.map(row => ({ type: row.status, studentId: row.id, key: `final-attendance:${year}:${date}:${row.id}`, fields: { date, time: row.arrivalTime || row.outTime, reason: row.reason } }));
+  return rows.map(row => ({ type: row.status, studentId: row.id, key: `final-attendance:${year}:${date}:${row.id}`, fields: { date, time: row.status==='Late'?row.arrivalTime:row.outTime||row.arrivalTime, reason: row.reason } }));
 }
 export function attendanceStats(studentId, records, from, through, config) {
   const counts = { working: 0, present: 0, absent: 0, late: 0, leave: 0, unmarked: 0, consecutive: 0 };

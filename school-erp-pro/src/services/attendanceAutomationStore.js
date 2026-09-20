@@ -20,6 +20,7 @@ export function reviewAttendance(year, standard, division, date) {
   for (const row of rows) {
     if (!statuses.includes(row.status)) throw Error(`Mark attendance for ${row.name}.`);
     if (row.status === 'Late' && !row.arrivalTime) throw Error(`Record arrival time for ${row.name}.`);
+    if (['Permission Leave','Early Leave'].includes(row.status) && !(row.outTime || row.arrivalTime)) throw Error(`Record out time for ${row.name}.`);
     if (['Permission Leave','Early Leave'].includes(row.status) && !row.reason?.trim()) throw Error(`Record the permission reason for ${row.name}.`);
   }
   const expected = Object.fromEntries(['erp_pro_students','erp_pro_attendance','erp_pro_attendance_years',draftKey,submissionKey,'erp_pro_message_jobs',automationKey,'schoolSettings'].map(key => [key, localStorage.getItem(key)]));

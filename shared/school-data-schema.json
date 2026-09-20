@@ -4,7 +4,7 @@
   "membershipPath": "schools/{schoolId}/members/{uid}",
   "collections": ["students", "parents", "teachers", "attendance", "academic_years", "homework", "exams", "results", "fees", "library", "sports", "scholarships", "trips", "certificates", "notifications", "communication_logs", "audit_logs", "settings"],
   "recordMetadata": ["id", "class_id", "version", "updated_at", "updated_by", "deleted", "data"],
-  "attendanceStatuses": ["Present", "Absent", "Late", "Leave"],
+  "attendanceStatuses": ["Present", "Absent", "Late", "Leave", "Permission Leave", "Approved Leave", "Sick Leave", "Early Leave", "Official Duty", "Half Day", "Medical Leave", "Sports Duty", "Trip Duty"],
   "syncStatuses": ["Synced", "Offline", "Pending Sync", "Sync Failed"],
   "identity": "Student document ID is the existing stable Student Master ID. GR is a separately unique school identifier. Never match students by parent mobile or name."
 }
