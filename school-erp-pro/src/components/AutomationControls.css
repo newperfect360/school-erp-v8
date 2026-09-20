@@ -1,0 +1,5 @@
+.automation-controls fieldset{border:1px solid #d5dee8;border-radius:8px;padding:16px;margin:12px 0;min-width:0}
+.automation-controls label{display:block;margin:8px 0}.automation-controls input:not([type=checkbox]),.automation-controls select,.automation-controls textarea{max-width:100%;width:100%}
+.automation-controls button{min-height:44px;margin:6px}.automation-controls .message-preview{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;max-width:100%}
+.attendance-table select.extended-status{display:block;max-width:100%}.attendance-detail-fields input{max-width:190px}
+@media(max-width:600px){.automation-controls .form-grid{grid-template-columns:1fr}.automation-controls fieldset{padding:10px}}

@@ -9,6 +9,7 @@ export function schoolFirebase(){
  if(client)return client;
  if(!cloudEnabled)throw Error('Shared backend is not configured.');
  const emulator=import.meta.env.VITE_FIREBASE_EMULATORS==='true';
+ if(emulator&&import.meta.env.PROD)throw Error('Emulator authentication is not allowed in a production build.');
  const config={projectId:import.meta.env.VITE_FIREBASE_PROJECT_ID,apiKey:import.meta.env.VITE_FIREBASE_API_KEY,appId:import.meta.env.VITE_FIREBASE_APP_ID,authDomain:import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,storageBucket:import.meta.env.VITE_FIREBASE_STORAGE_BUCKET};
  if(!config.projectId||!config.apiKey||!config.appId)throw Error('Complete the approved public Firebase client configuration.');
  const schoolId=import.meta.env.VITE_SCHOOL_ID;

@@ -2,7 +2,7 @@ import { notify } from "../components/Feedback";
 import { useState } from "react";
 import { readStored, writeStored } from "../storage";
 
-export default function Settings({ onSaved }) {
+export default function Settings({ onSaved, onNavigate }) {
   const [imageLoading, setImageLoading] = useState(false);
   const [settings, setSettings] = useState(() => readStored("schoolSettings", {}));
 
@@ -38,6 +38,7 @@ export default function Settings({ onSaved }) {
 
   return (
     <div className="page">
+<div className="import-actions"><button onClick={()=>onNavigate?.("Automation")}>School Timing / Attendance Automation / Message Templates</button></div>
       <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>शाळेच्या सेटिंग्ज</h2><p>शाळेची माहिती आणि संपर्क configuration</p></div></div>
 
       <div className="form-grid">{[["schoolCode", "School Code / शाळा संकेतांक"], ["udise", "UDISE"], ["academicYear", "Academic Year / शैक्षणिक वर्ष"]].map(([name,label]) => <label key={name}>{label}<input name={name} value={settings[name] || ""} onChange={change} /></label>)}

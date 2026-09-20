@@ -1,10 +1,11 @@
-import {collection,doc,getDoc,getDocs,query,where,onSnapshot,runTransaction,serverTimestamp} from 'firebase/firestore';
+import * as defaultFirestoreSdk from 'firebase/firestore';
 import {ref,uploadBytes,getBlob} from 'firebase/storage';
 import {collections,validateMutation,conflictError} from './recordProtocol.js';
 
 const admin=member=>['Admin','Super Admin'].includes(member.role);
 const globalCollections=['academic_years','notifications','settings'];
-export function createFirebaseRepository({db,storage,auth,schoolId}){
+export function createFirebaseRepository({db,storage,auth,schoolId,firestoreSdk=defaultFirestoreSdk}){
+ const {collection,doc,getDoc,getDocs,query,where,onSnapshot,runTransaction,serverTimestamp}=firestoreSdk;
  const root=`schools/${schoolId}`;
  let member=null;
  const user=()=>{if(!auth.currentUser)throw Error('Sign in to your school account.');return auth.currentUser};

@@ -1,20 +1,28 @@
 import { useState } from "react";
+import { signIn, forgotPassword, resetPassword, authMessage } from "../backend/productionAuth";
 import Icon from "../components/Icon";
 import { DownloadAppCard } from './DownloadApp';
 import { academicYear, useLanguage } from "../design/language";
 import { CampusIllustration, LanguageSwitch, SchoolMark } from "../design/SchoolUI";
 
-export default function SchoolLogin({ settings, onLogin }) {
+export default function SchoolLogin({ settings, status }) {
   const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
-  const [help, setHelp] = useState(false);
-  const submit = event => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    // Retain existing LOCAL review access. This is not production authentication.
-    if (data.get("username") === "admin" && data.get("password") === "123456") onLogin();
-    else setError(t("The username or password is incorrect. Please try again.", "वापरकर्ता नाव किंवा पासवर्ड चुकीचा आहे. पुन्हा प्रयत्न करा."));
+  const [mode, setMode] = useState(new URLSearchParams(location.search).get('mode') === 'resetPassword' ? 'reset' : 'login');
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
+  const submit = async event => {
+    event.preventDefault(); const form = event.currentTarget, data = new FormData(form);
+    setBusy(true); setError(''); setMessage('');
+    try {
+      if (mode === 'forgot') { await forgotPassword(data.get('email')); setMessage('If this account is eligible, a reset link will be sent to its email address.'); }
+      else if (mode === 'reset') {
+        if (data.get('password') !== data.get('confirm')) throw Error('Passwords do not match.');
+        await resetPassword(new URLSearchParams(location.search).get('oobCode'), data.get('password'));
+        history.replaceState(null, '', location.pathname); setMode('login'); form.reset(); setMessage('Password reset. Sign in with your new password.');
+      } else { await signIn(data.get('email'), data.get('password')); form.reset(); }
+    } catch (error) { setError(error.code ? authMessage(error) : error.message); }
+    finally { setBusy(false); }
   };
   return <div className="academic-login">
     <aside className="login-campus">
@@ -25,15 +33,15 @@ export default function SchoolLogin({ settings, onLogin }) {
     </aside>
     <main className="academic-login-main"><div className="login-topline"><span>{t("School management portal", "शालेय व्यवस्थापन पोर्टल")}</span><LanguageSwitch /></div>
       <form className="academic-login-form" onSubmit={submit}>
-        <p className="local-review-note">{t("LOCAL SCHOOL REVIEW · cloud sign-in and OTP are not connected", "स्थानिक शालेय परीक्षण · Cloud प्रवेश व OTP जोडलेले नाहीत")}</p>
-        <span className="login-emblem"><Icon name="cap" size={28} /></span><span className="academic-eyebrow">{t("YOUR SCHOOL DAY STARTS HERE", "आपल्या शालेय दिवसाची सुरुवात")}</span>
-        <h2>{t("Welcome back.", "आपले स्वागत आहे.")}</h2><p>{t("Sign in to your school workspace.", "आपल्या शालेय कार्यस्थानात प्रवेश करा.")}</p>
-        <label>{t("Username", "वापरकर्ता नाव")}<div className="input-with-icon"><Icon name="users" size={18} /><input name="username" aria-label="Username" autoComplete="username" placeholder={t("Enter your username", "वापरकर्ता नाव लिहा")} required onChange={() => setError("")} /></div></label>
-        <label>{t("Password", "पासवर्ड")}<div className="input-with-icon"><Icon name="lock" size={18} /><input name="password" aria-label="Password" autoComplete="current-password" type={visible ? "text" : "password"} placeholder={t("Enter your password", "पासवर्ड लिहा")} required onChange={() => setError("")} /><button type="button" className="icon-button" aria-label={visible ? "Hide password" : "Show password"} aria-pressed={visible} onClick={() => setVisible(!visible)}><Icon name="eye" size={18} /></button></div></label>
-        <button type="button" className="login-help text-button" onClick={() => setHelp(!help)} aria-expanded={help}>{t("Need help signing in?", "प्रवेशासाठी मदत हवी आहे?")}</button>
-        {help && <p className="inline-notice">{t("Please contact your school administrator for account assistance. Online password recovery is not yet configured.", "खात्यासंबंधी मदतीसाठी शाळेच्या प्रशासकाशी संपर्क साधा. ऑनलाइन पासवर्ड पुनर्प्राप्ती अद्याप उपलब्ध नाही.")}</p>}
+        <h2>{mode === 'forgot' ? 'Forgot Password' : mode === 'reset' ? 'Reset Password' : t('Welcome back.', 'Welcome back.')}</h2>
+        <p>Sign in with your authorized school email account.</p>
+        {mode !== 'reset' && <label>Email<input name="email" aria-label="Email" type="email" autoComplete="username" required /></label>}
+        {mode !== 'forgot' && <label>{mode === 'reset' ? 'New password' : 'Password'}<div className="input-with-icon"><input name="password" aria-label="Password" autoComplete={mode === 'reset' ? 'new-password' : 'current-password'} type={visible ? 'text' : 'password'} minLength={mode === 'reset' ? 12 : undefined} required /><button type="button" aria-label={visible ? 'Hide password' : 'Show password'} onClick={()=>setVisible(!visible)}>{visible ? 'Hide' : 'Show'}</button></div></label>}
+        {mode === 'reset' && <label>Confirm new password<input name="confirm" type={visible ? 'text' : 'password'} autoComplete="new-password" minLength={12} required /></label>}
+        <button type="button" className="login-help text-button" onClick={()=>{setMode(mode === 'login' ? 'forgot' : 'login');setError('');setMessage('')}}>{mode === 'login' ? 'Forgot Password' : 'Back to Login'}</button>
+        {status && <p role="status">{status}</p>}{message && <p role="status">{message}</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <button type="submit" className="school-button login-submit" aria-label="Login">{t("Sign in to school", "शाळेत प्रवेश करा")}<Icon name="arrow" size={18} /></button>
+        <button type="submit" className="school-button login-submit" disabled={busy} aria-label={mode === 'login' ? 'Login' : 'Submit password request'}>{mode === 'login' ? 'Sign in to school' : mode === 'forgot' ? 'Send reset link' : 'Reset Password'}</button>
         <div className="login-academic-year"><Icon name="calendar" size={17} />{t("Academic year", "शैक्षणिक वर्ष")} <strong>{academicYear(settings)}</strong></div>
       </form>
       <div className="login-bottomline"><SchoolMark logo={settings.logo} /><p>{settings.schoolName}<span>{settings.address}</span></p></div>

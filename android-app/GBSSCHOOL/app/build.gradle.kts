@@ -20,6 +20,9 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigured.toString())
+        val schoolTenant = providers.gradleProperty("SCHOOL_TENANT_ID").orElse("").get()
+        require(schoolTenant.matches(Regex("[A-Za-z0-9_-]*"))) { "Invalid school tenant ID" }
+        buildConfigField("String", "SCHOOL_TENANT_ID", "\"$schoolTenant\"")
         vectorDrawables.useSupportLibrary = true
     }
 

@@ -3,19 +3,21 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
 import {doc,setDoc,getDoc,collection,getDocs,query,where,writeBatch,serverTimestamp} from 'firebase/firestore';
+import * as firestoreSdk from 'firebase/firestore';
 import {createFirebaseRepository} from '../../src/backend/firebaseRepository.js';
 let env;
 const projectId='demo-gbs-school';
 const school='school-a';
+const grants={passwordSetupComplete:true,resources:['students','parents','teachers','attendance','academic_years','homework','exams','results','fees','library','sports','scholarships','trips','certificates','notifications','communication_logs','settings']};
 const student=(id,gr,cls='8:A')=>({collection:'students',id,expectedVersion:0,classId:cls,mutationId:crypto.randomUUID(),data:{id,name:'Test Student',grNo:gr,className:cls.split(':')[0],division:cls.split(':')[1]}});
-const repo=uid=>createFirebaseRepository({db:env.authenticatedContext(uid).firestore(),auth:{currentUser:{uid}},schoolId:school});
+const repo=uid=>createFirebaseRepository({db:env.authenticatedContext(uid).firestore(),auth:{currentUser:{uid}},schoolId:school,firestoreSdk});
 before(async()=>{
  env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:8080,rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});
  await env.clearFirestore();
  await env.withSecurityRulesDisabled(async ctx=>{
   const db=ctx.firestore();
-  for(const [uid,role,classIds] of [['admin','Admin',[]],['teacher','Teacher',['8:A']],['other','Teacher',['9:B']]])await setDoc(doc(db,`schools/${school}/members/${uid}`),{active:true,role,classIds,studentIds:[]});
-  await setDoc(doc(db,'schools/school-b/members/outsider'),{active:true,role:'Admin',classIds:[],studentIds:[]});
+  for(const [uid,role,classIds] of [['admin','Admin',[]],['teacher','Teacher',['8:A']],['other','Teacher',['9:B']]])await setDoc(doc(db,`schools/${school}/members/${uid}`),{...grants,active:true,role,classIds,studentIds:[]});
+  await setDoc(doc(db,'schools/school-b/members/outsider'),{...grants,active:true,role:'Admin',classIds:[],studentIds:[]});
  });
 });
 after(async()=>{await env?.cleanup()});
@@ -36,7 +38,7 @@ test('teacher can create own class but cannot access other school or class or as
  const outsider=env.authenticatedContext('outsider').firestore(),other=env.authenticatedContext('other').firestore();
  await assertFails(getDoc(doc(outsider,`schools/${school}/students/student-1`)));
  await assertFails(getDoc(doc(other,`schools/${school}/students/student-1`)));
- await assertFails(setDoc(doc(other,`schools/${school}/members/other`),{active:true,role:'Admin',classIds:[],studentIds:[]}));
+ await assertFails(setDoc(doc(other,`schools/${school}/members/other`),{...grants,active:true,role:'Admin',classIds:[],studentIds:[]}));
  await assertFails(getDocs(collection(other,`schools/${school}/students`)));
  await assertSucceeds(getDocs(query(collection(other,`schools/${school}/students`),where('class_id','==','9:B'))));
 });

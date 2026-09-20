@@ -2,28 +2,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function member(school) { return get(/databases/$(database)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
-    function active(school) { return request.auth != null && member(school).active == true; }
+    function active(school) { return request.auth != null && member(school).active == true && member(school).passwordSetupComplete == true; }
     function admin(school) { return active(school) && member(school).role in ['Admin','Super Admin']; }
     function known(resource) { return resource in ['students','parents','teachers','attendance','academic_years','homework','exams','results','fees','library','sports','scholarships','trips','certificates','notifications','communication_logs','settings']; }
     function moduleAllowed(school, resource) {
-      return admin(school) || (active(school) && (
-        resource in ['academic_years','notifications','settings'] ||
-        (member(school).role in ['Teacher','Class Teacher','Subject Teacher'] && resource in ['students','parents','attendance','homework','exams','results','communication_logs','certificates']) ||
-        (member(school).role == 'Sports Teacher' && resource in ['students','sports','communication_logs']) ||
-        (member(school).role == 'Library Staff' && resource in ['students','library','communication_logs']) ||
-        (member(school).role == 'Accounts Staff' && resource in ['students','fees','communication_logs'])
-      ));
+      let m = member(school);
+      return request.auth != null && m.active == true && m.passwordSetupComplete == true && resource in m.resources && (
+        m.role in ['Admin','Super Admin'] || resource in ['academic_years','notifications','settings'] ||
+        (m.role in ['Teacher','Class Teacher','Subject Teacher'] && resource in ['students','parents','attendance','homework','exams','results','communication_logs','certificates']) ||
+        (m.role == 'Sports Teacher' && resource in ['students','sports','communication_logs']) ||
+        (m.role == 'Library Staff' && resource in ['students','library','communication_logs']) ||
+        (m.role == 'Accounts Staff' && resource in ['students','fees','communication_logs']) ||
+        (m.role in ['Headmaster','Clerk','Office Staff'] && known(resource))
+      );
     }
     function scopeAllowed(school, resource, row) {
-      return admin(school) || row.class_id in member(school).classIds ||
-        (resource == 'students' && row.id in member(school).studentIds) ||
-        ('studentId' in row.data && row.data.studentId in member(school).studentIds) ||
+      let m = member(school);
+      return m.role in ['Admin','Super Admin'] || row.class_id in m.classIds ||
+        (resource == 'students' && row.id in m.studentIds) ||
+        ('studentId' in row.data && row.data.studentId in m.studentIds) ||
         (row.class_id == '' && resource in ['academic_years','notifications','settings']) ||
-        (row.class_id == '' && resource == 'library' && member(school).role == 'Library Staff');
+        (row.class_id == '' && resource == 'library' && m.role == 'Library Staff');
     }
     function canWrite(school, collection, row) {
       return moduleAllowed(school, collection) && scopeAllowed(school, collection, row) &&
-        (admin(school) || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
+        (member(school).role in ['Admin','Super Admin'] || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
     }
     function envelope(id) {
       return request.resource.data.keys().hasOnly(['id','class_id','version','updated_at','updated_by','deleted','data']) &&
@@ -56,7 +59,15 @@ service cloud.firestore {
     match /schools/{school}/members/{uid} {
       allow get: if request.auth != null && (request.auth.uid == uid || admin(school));
       allow list: if admin(school);
-      allow write: if false;
+      allow update: if admin(school) && uid != request.auth.uid &&
+        resource.data.role != 'Super Admin' &&
+        (member(school).role == 'Super Admin' || (resource.data.role != 'Admin' && request.resource.data.role != 'Admin')) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','modules','resources','classIds','studentIds','active']) &&
+        request.resource.data.role in ['Admin','Headmaster','Teacher','Class Teacher','Subject Teacher','Clerk','Office Staff','Sports Teacher','Trip In-charge','Library Staff','Accounts Staff'] &&
+        request.resource.data.active is bool && request.resource.data.modules is list && request.resource.data.resources is list &&
+        request.resource.data.classIds is list && request.resource.data.studentIds is list &&
+        request.resource.data.modules.hasOnly(member(school).modules) && request.resource.data.resources.hasOnly(member(school).resources);
+      allow create, delete: if false;
     }
     match /schools/{school}/student_gr/{gr} {
       allow get: if active(school);
@@ -82,7 +93,7 @@ service cloud.firestore {
       allow read: if known(collection) && moduleAllowed(school,collection) && scopeAllowed(school,collection,resource.data);
       allow create: if known(collection) && canWrite(school,collection,request.resource.data) && envelope(id) && linkedScope(school,request.resource.data) && domainValid(collection,request.resource.data) && request.resource.data.version == 1 &&
         auditMatches(school,collection,id) && (collection != 'students' || studentValid(school,id));
-      allow update: if known(collection) && canWrite(school,collection,resource.data) && canWrite(school,collection,request.resource.data) && envelope(id) && linkedScope(school,request.resource.data) && domainValid(collection,request.resource.data) &&
+      allow update: if known(collection) && canWrite(school,collection,resource.data) && scopeAllowed(school,collection,request.resource.data) && envelope(id) && linkedScope(school,request.resource.data) && domainValid(collection,request.resource.data) &&
         request.resource.data.version == resource.data.version + 1 && auditMatches(school,collection,id) &&
         (admin(school) || request.resource.data.class_id == resource.data.class_id) &&
         (collection != 'students' || (studentValid(school,id) && request.resource.data.data.grNo == resource.data.data.grNo));

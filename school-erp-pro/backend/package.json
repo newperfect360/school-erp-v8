@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --project demo-gbs-school --only firestore,auth,storage \"node --test tests/*.test.mjs\"",
+    "test": "firebase emulators:exec --project demo-gbs-school --only firestore,auth,storage \"node --test --test-concurrency=1 tests/*.test.mjs\"",
     "emulators": "firebase emulators:start --project demo-gbs-school --only firestore,auth,storage"
   },
   "dependencies": {"firebase-admin": "^13.0.0"},

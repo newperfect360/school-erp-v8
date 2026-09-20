@@ -6,6 +6,7 @@ export const communicationKeys = {
 
 export const defaultAbsenceSettings = {
   autoPrepare: false,
+  primaryContact: "father",
   language: "en",
   templates: {
     en: "Your child [Student Name], Class [Standard/Division], is marked absent today on [Date]. Please contact the school if required.",
@@ -23,11 +24,11 @@ export function normalizeParentMobile(value) {
   return "";
 }
 
-export function parentContacts(student) {
-  return [
+export function parentContacts(student, primaryContact = "father") {
+  const contacts = [
     ["father", "Father", student.fatherName, student.fatherMobile],
     ["mother", "Mother", student.motherName, student.motherMobile],
-    ["emergency", "Emergency Contact", student.emergencyName || student.emergencyRelation, student.emergencyContact],
+    ["emergency", "Emergency Contact", student.emergencyName || student.emergencyRelation, student.emergencyContact || student.emergencyMobile],
     ["guardian", "Guardian", student.guardianName, student.guardianMobile],
     ["primary", "Parent / Guardian", student.guardianName || "Parent / Guardian", student.mobile],
     ["alternate", "Alternate Contact", student.alternateName, student.alternateMobile],
@@ -35,6 +36,7 @@ export function parentContacts(student) {
   ].filter(([, , , mobile]) => String(mobile ?? "").trim()).map(([id, label, name, mobile]) => ({
     id, label, name: name || label, mobile: normalizeParentMobile(mobile), rawMobile: String(mobile),
   }));
+  return contacts.sort((a, b) => Number(b.id === primaryContact && !!b.mobile) - Number(a.id === primaryContact && !!a.mobile));
 }
 
 export function absenceMessage(student, date, settings) {
@@ -63,7 +65,8 @@ export function communicationRecord(student, contact, date, channel, actor, extr
   };
 }
 
-export const followupStatuses = ["Pending", "Parent Contacted", "No Response", "Explained", "Medical Leave", "Follow-up Required"];
+export const followupStatuses = ["Not Contacted", "Contact Attempted", "Parent Contacted", "No Response", "Follow-up Required", "Reason Confirmed", "Pending", "Explained", "Medical Leave"];
+export const callOutcomes = ["Parent Contacted", "No Answer", "Busy", "Switched Off", "Call Back Requested", "Medical Reason", "Family Reason", "Wrong Number", "Other"];
 
 // A serializable contract for a future authenticated server worker. No provider
 // or browser-side credentials; creating a job does not dispatch a voice call.

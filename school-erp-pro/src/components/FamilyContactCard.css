@@ -1,0 +1,6 @@
+.family-contact-card .family-actions a,.family-contact-card .family-actions button{min-height:44px;display:inline-flex;align-items:center;padding:10px 12px}
+.call-followup{margin-top:12px;display:grid;gap:10px;white-space:normal}
+.call-followup label{display:grid;gap:5px}.call-followup select,.call-followup textarea{max-width:100%;min-height:44px}
+.attendance-table .call-followup select{display:block}
+.call-followup article{border-bottom:1px solid #dce3ec;padding:8px 0;overflow-wrap:anywhere}.call-outcome{border:1px solid #ccd8e5;padding:12px;display:grid;gap:8px}
+@media(max-width:700px){.family-contact-grid{grid-template-columns:1fr!important}.family-actions{display:flex;flex-wrap:wrap;gap:8px}.family-contact-card{min-width:0}.family-number{overflow-wrap:anywhere}}

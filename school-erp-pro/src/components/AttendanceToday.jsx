@@ -1,0 +1,13 @@
+import {readStored,localDate} from '../storage';
+import {currentAcademicYear} from '../services/academicYears';
+import {lifecycleActive} from '../services/studentLifecycle';
+import {attendanceStats} from '../services/attendanceAutomation';
+import {configForAttendance} from '../services/attendanceAutomationStore';
+export default function AttendanceToday({allowed=()=>false}){
+ const date=localDate(),year=currentAcademicYear(),students=readStored('erp_pro_students',[]).filter(s=>lifecycleActive(s)&&s.academicYear===year),records=readStored('erp_pro_attendance',{}),day=records[date]||{},config=configForAttendance(),jobs=readStored('erp_pro_message_jobs',[]).filter(j=>j.date===date),staff=readStored('erp_pro_staff_attendance',{})[date]?.rows||[];
+ const statuses=['Present','Absent','Late','Approved Leave','Sick Leave','Permission Leave','Early Leave','Official Duty'];
+ const counts=statuses.map(status=>[status,students.filter(s=>day[s.id]===status).length]);counts.push(['Not Marked',students.filter(s=>!day[s.id]).length]);
+ const since=`${year.slice(0,4)}-06-01`,alerts=students.map(s=>({...s,stats:attendanceStats(s.id,records,since,date,config)})).filter(s=>s.stats.consecutive>=config.consecutiveDays||s.stats.marked>=config.minimumMarkedDays&&s.stats.percentage<config.lowAttendancePercent);
+ if(!allowed('Attendance')&&!allowed('Staff'))return null;
+ return <section className="school-panel workflow-panel"><h2>Today's Finalized Attendance / आजची उपस्थिती</h2><p>{date} · {year} · Draft ticks are excluded.</p>{allowed('Attendance')&&<><div className="check-grid">{counts.map(([label,count])=><p key={label}>{label}: <strong>{count}</strong></p>)}</div><details><summary>Attendance follow-up flags ({alerts.length})</summary><p>Percentage uses marked working days. Unmarked days are shown separately; holidays are excluded.</p>{alerts.map(s=><p key={s.id}><strong>{s.name} · {s.className}/{s.division}</strong> — Working {s.stats.working}; Present {s.stats.present}; Absent {s.stats.absent}; Late {s.stats.late}; Leave {s.stats.leave}; Not marked {s.stats.unmarked}; Attendance {s.stats.percentage??'—'}%; Consecutive absent {s.stats.consecutive}</p>)}</details></>}{allowed('Staff')&&<p>Staff: Present {staff.filter(s=>s.status==='Present').length} · Absent {staff.filter(s=>s.status==='Absent').length} · Late {staff.filter(s=>s.status==='Late').length} · Leave {staff.filter(s=>['On Leave','Half Day','Early Leave'].includes(s.status)).length}</p>}{allowed('Automation')&&<p>Communication: Sent {jobs.filter(j=>!j.dryRun&&['Sent','Delivered'].includes(j.status)).length} · Pending previews {jobs.filter(j=>j.status==='Queued').length} · Failed validation {jobs.filter(j=>j.status==='Failed').length}</p>}</section>;
+}

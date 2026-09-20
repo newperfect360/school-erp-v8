@@ -1,3 +1,6 @@
+import {markedAbsent} from "../services/attendanceAutomationStore";
+import {useContext} from "react";
+import {CommunicationSession} from "../backend/CommunicationSession";
 import FamilyContactCard from './FamilyContactCard';
 import {lifecycleActive} from '../services/studentLifecycle';
 import AudioRecorder from "./AudioRecorder";
@@ -8,10 +11,12 @@ import { notify } from "./Feedback";
 import { absenceMessage, communicationKeys, communicationLink, communicationRecord, defaultAbsenceSettings, followupStatuses, parentContacts } from "../services/absenceCommunication";
 import "./AbsenceCommunication.css";
 
-export function useAbsenceCommunication(date, students, actor = { id: "admin", name: "Administrator", role: "admin" }) {
+export function useAbsenceCommunication(date, students, suppliedActor) {
+  const session = useContext(CommunicationSession);
+  const actor = suppliedActor || {id:session?.uid || "unverified",name:session?.email || "",role:session ? (["Admin","Super Admin"].includes(session.role)?"admin":"teacher") : "none"};
   const [history, setHistory, reloadHistory] = useStoredState(communicationKeys.history, []);
-  useEffect(()=>{window.addEventListener('communication-history-changed',reloadHistory);return()=>window.removeEventListener('communication-history-changed',reloadHistory)},[reloadHistory]);
-  const [followups, setFollowups] = useStoredState(communicationKeys.followups, {});
+  const [followups, setFollowups, reloadFollowups] = useStoredState(communicationKeys.followups, {});
+  useEffect(()=>{const reload=()=>{reloadHistory();reloadFollowups()};window.addEventListener('communication-history-changed',reload);return()=>window.removeEventListener('communication-history-changed',reload)},[reloadHistory,reloadFollowups]);
   const [settings, setSettings] = useStoredState(communicationKeys.settings, defaultAbsenceSettings);
   const [contacts, setContacts] = useState({});
   const [selected, setSelected] = useState([]);
@@ -31,19 +36,19 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
   const absent = students.filter(s => s.status === "Absent");
   const chosen = absent.filter(s => selected.includes(String(s.id)));
   const contactFor = s => {
-    const list = parentContacts(s);
+    const list = parentContacts(s, settings.primaryContact);
     return list.find(c => c.id === contacts[s.id]) || list.find(c => c.mobile) || list[0];
   };
   const eventsFor = s => history.filter(h => String(h.studentId) === String(s.id) && h.attendanceDate === date);
-  const followupFor = s => followups[JSON.stringify([date, String(s.id)])] || { status: "Pending", response: "" };
+  const followupFor = s => followups[JSON.stringify([date, String(s.id)])] || { status: "Not Contacted", response: "" };
   const setFollowup = (s, value) => allowed && setFollowups(current => ({ ...current, [JSON.stringify([date, String(s.id)])]: { ...followupFor(s), ...value, updatedBy: actor.id, updatedAt: new Date().toISOString() } }));
 
   // Re-resolve by immutable Student Master ID at click time, never by row index/name.
   const resolve = (s, contactId = contactFor(s)?.id) => {
     const master = readStored("erp_pro_students", []).find(item => String(item.id) === String(s.id));
     const contact = master && parentContacts(master).find(c => c.id === contactId);
-    const day = readStored("erp_pro_attendance", {})[date];
-    if (!allowed || !master || !lifecycleActive(master) || day?.[s.id] !== "Absent" || !contact?.mobile) {
+
+    if (!allowed || !master || !lifecycleActive(master) || !markedAbsent(master,date) || !contact?.mobile) {
       notify("A valid parent contact and saved Absent attendance are required. Check Student Master.");
       return null;
     }
@@ -98,7 +103,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
     const href = communicationLink(channel, contact?.mobile, absenceMessage(s, date, settings), navigator.userAgent);
     return href && allowed ? <a className={`contact-action ${channel}`} href={href} target={channel === "whatsapp" ? "_blank" : undefined} rel="noopener noreferrer" onClick={e => initiate(e, s, channel)}>{label}</a> : <button disabled>{label}</button>;
   };
-  const quickActions = s => allowed && <div className="absence-quick">{contactSelector(s)}<div className="contact-actions">{link(s, "whatsapp", "WhatsApp")}{link(s, "sms", "SMS")}{link(s, "call", "Call Parent")}<button onClick={() => { setDetails({ id: s.id, date }); }}>Audio</button><button aria-label={`View Communication History for ${s.name}`} onClick={() => setDetails({ id: s.id, date })}>Details</button></div></div>;
+  const quickActions = s => allowed && <div className="absence-quick">{contactSelector(s)}<div className="contact-actions">{link(s, "whatsapp", "WhatsApp")}{link(s, "sms", "SMS")}{link(s, "call", "Call Parent")}<button onClick={() => { setDetails({ id: s.id, date }); }}>Audio</button><button aria-label={`View Communication History for ${s.name}`} onClick={() => setDetails({ id: s.id, date })}>Contact History</button></div></div>;
 
   const exportParents = () => {
     const rows = [["Student", "Class", "Date", "Parent", "Contact type", "Parent mobile"]];
@@ -123,7 +128,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
     <h3>Absent Student Follow-up</h3>
     <p>Contact actions are saved on this browser. Opening an app does not confirm delivery or a connected call.</p>
     {actor.role === "admin" && <details className="absence-settings"><summary>Absence notification settings</summary>
-      <label><input type="checkbox" checked={settings.autoPrepare} onChange={e => setSettings({ ...settings, autoPrepare: e.target.checked })} /> Automatically prepare a notification when marked absent</label>
+      <label>Primary parent contact<select aria-label="Primary parent contact" value={settings.primaryContact || "father"} onChange={e=>setSettings({...settings,primaryContact:e.target.value})}>{["father","mother","emergency"].map(id=><option key={id} value={id}>{id}</option>)}</select></label><label><input type="checkbox" checked={settings.autoPrepare} onChange={e => setSettings({ ...settings, autoPrepare: e.target.checked })} /> Automatically prepare a notification when marked absent</label>
       <label><input type="checkbox" checked={false} disabled /> Automatic sending (provider not connected)</label>
       <p>Notifications can be prepared automatically; sending requires the parent messaging app. Only an authenticated server provider can enable unattended sending.</p>
       <label>Notification language<select value={settings.language} onChange={e => setSettings({ ...settings, language: e.target.value })}><option value="en">English</option><option value="mr">मराठी</option></select></label>
@@ -137,7 +142,7 @@ export function useAbsenceCommunication(date, students, actor = { id: "admin", n
         <FamilyContactCard student={s} date={date} message={absenceMessage(s,date,settings)} requireAbsent compact/>{quickActions(s)}<div className="parent-number">Parent number: {contact?.mobile || "Missing or invalid"}</div>
         <dl className="contact-progress">{[["whatsapp", "WhatsApp Sent"], ["sms", "SMS Sent"], ["call", "Call Initiated"]].map(([channel, label]) => <div key={channel}><dt>{label}</dt><dd>{events.some(h => h.channel === channel) ? channel === "call" ? "Dialer requested" : "Unconfirmed · composer opened" : "Not initiated"}</dd></div>)}</dl>
         {events.some(h => h.channel === "notification") && <p>Absence notification prepared — not sent</p>}
-        <label>Parent Response<textarea aria-label={`Parent Response for ${s.name}`} maxLength={2000} value={followup.response} onChange={e => setFollowup(s, { response: e.target.value })} /></label>
+        <label>Parent Response<textarea aria-label={`Parent Response for ${s.name}`} maxLength={2000} value={followup.response || ""} onChange={e => setFollowup(s, { response: e.target.value })} /></label>
         <label>Follow-up Status<select aria-label={`Follow-up Status for ${s.name}`} value={followup.status} onChange={e => setFollowup(s, { status: e.target.value })}>{followupStatuses.map(status => <option key={status}>{status}</option>)}</select></label>
       </article>; })}</div>
     </>}
