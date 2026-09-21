@@ -21,7 +21,7 @@ export default function useSchoolSession() {
         if (!member?.active || !Array.isArray(member.modules) || member.passwordSetupComplete !== true) {
           setSession(null); setStatus('Your account requires school administrator activation or password setup. Use Forgot Password if directed by your administrator.'); return;
         }
-        setSession({ uid: user.uid, email: user.email, role: member.role, modules: member.modules, resources: member.resources || [] }); setStatus('');
+        setSession({ uid: user.uid, email: user.email, role: member.role === "SUPER_ADMIN" ? "Super Admin" : member.role, modules: member.modules, resources: member.resources || [] }); setStatus('');
       }, () => { setSession(null); setStatus('School access could not be verified.'); });
     });
     return () => { stopMember(); stopAuth(); };

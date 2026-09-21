@@ -27,7 +27,7 @@ export default function MemberPermissions({ session }) {
   };
   return <section><h3>Staff roles and permissions</h3><p>Only existing school memberships appear here. The main Super Admin and your own permissions cannot be changed here. Password activation remains a trusted administrator setup step.</p>
     <label>Staff account<select aria-label="Staff account" value={draft?.uid || ''} onChange={event => { const member = members.find(row => row.uid === event.target.value); setDraft(member ? { ...member, modules: member.modules || [], resources: member.resources || [], classIds: member.classIds || [], studentIds: member.studentIds || [] } : null); }}>
-      <option value="">Select staff</option>{members.filter(member => member.uid !== session.uid && member.role !== 'Super Admin' && (session.role === 'Super Admin' || member.role !== 'Admin')).map(member => <option key={member.uid} value={member.uid}>{member.email || member.uid} · {member.role}</option>)}
+      <option value="">Select staff</option>{members.filter(member => member.uid !== session.uid && !['Super Admin','SUPER_ADMIN'].includes(member.role) && (session.role === 'Super Admin' || member.role !== 'Admin')).map(member => <option key={member.uid} value={member.uid}>{member.email || member.uid} · {member.role}</option>)}
     </select></label>
     {draft && <><label>Role<select value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })}>{roles.filter(role => role !== 'Admin' || session.role === 'Super Admin').map(role => <option key={role}>{role}</option>)}</select></label>
       <label><input type="checkbox" checked={!!draft.active} onChange={event => setDraft({ ...draft, active: event.target.checked })}/>Active account</label>

@@ -12,7 +12,7 @@ import Icon from './Icon';
 export default function FamilyContactCard({student,message='',date=localDate(),compact=false,onNavigate,requireAbsent=false}){
  const actor=useContext(CommunicationSession);
  const {t}=useLanguage(),[reveal,setReveal]=useState(requireAbsent),[callId,setCallId]=useState(null);
- const primary=readStored(communicationKeys.settings,{}).primaryContact||'father';
+ const primary=student.primaryNotificationContact||readStored(communicationKeys.settings,{}).primaryContact||'father';
  const contacts=parentContacts(student,primary),relations=[['father','Father','वडील'],['mother','Mother','आई'],['emergency','Emergency Contact','आपत्कालीन संपर्क']];
  relations.sort((a,b)=>Number(b[0]===(contacts.find(c=>c.mobile)?.id))-Number(a[0]===(contacts.find(c=>c.mobile)?.id)));
  const body=message||`${student.name}, Class ${student.className}/${student.division||''}: Please contact the school.`;

@@ -55,6 +55,7 @@ export const classKey = (year, standard, division) => JSON.stringify([year, stan
 export const draftId = (year, date, studentId) => JSON.stringify([year, date, String(studentId)]);
 export function mergedAutomation(value = {}) { return structuredClone({ ...automationDefaults, ...value, dryRun: true, weekdays: { ...defaultTiming, ...value.weekdays }, saturday: { ...automationDefaults.saturday, ...value.saturday } }); }
 const validTime = time => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time || '');
+const validDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date || '') && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0,10) === date;
 export function validateAutomation(config) {
   for (const timing of [config.weekdays, config.saturday, ...Object.values(config.overrides)]) {
     if (![timing.start,timing.end,timing.attendanceCutoff,timing.lateCutoff].every(validTime) || timing.end <= timing.start || timing.lateCutoff < timing.start || timing.attendanceCutoff < timing.start || timing.lateCutoff > timing.end || timing.attendanceCutoff > timing.end) throw Error('Choose valid start/end/cutoff times within the school day.');
@@ -63,13 +64,14 @@ export function validateAutomation(config) {
   if (!Array.isArray(config.enabledClasses) || !Array.isArray(config.weeklyHolidays) || config.weeklyHolidays.some(day => !Number.isInteger(day) || day < 0 || day > 6)) throw Error('Invalid class or holiday configuration.');
   if (!Number.isInteger(Number(config.maxRetries)) || !Number.isFinite(Number(config.lowAttendancePercent)) || !Number.isInteger(Number(config.minimumMarkedDays)) || config.minimumMarkedDays < 1) throw Error('Invalid retry limit or minimum marked days.');
   if (!Array.isArray(config.customStatuses) || config.customStatuses.some(status => typeof status !== 'string' || !status.trim())) throw Error('Custom statuses must have names.');
-  for (const [date, holiday] of Object.entries(config.holidays)) if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !holiday.reason?.trim() || !holiday.reopenDate || holiday.reopenDate <= date) throw Error('Each holiday needs a date, reason and later reopening date.');
+  for (const [date, timing] of Object.entries(config.overrides)) if (!validDate(date) || !timing.reason?.trim()) throw Error('Each special/exam timing needs a valid date and reason.');
+  for (const [date, holiday] of Object.entries(config.holidays)) if (!validDate(date) || !holiday.reason?.trim() || !validDate(holiday.reopenDate) || holiday.reopenDate <= date) throw Error('Each holiday needs a valid date, reason and later valid reopening date.');
   return true;
 }
 export function daySchedule(date, config) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0,10)!==date) throw Error('Invalid date.');
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-  if (config.holidays[date]) return { closed: true, ...config.holidays[date] };
+  if (config.holidays[date]) return { ...config.holidays[date], closed: true };
   if (config.overrides[date]) return { ...config.overrides[date], closed: false, special: true };
   return { ...(weekday === 6 ? config.saturday : config.weekdays), closed: config.weeklyHolidays.includes(weekday), saturday: weekday === 6 };
 }

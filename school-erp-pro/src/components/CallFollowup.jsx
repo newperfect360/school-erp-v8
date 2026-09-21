@@ -7,9 +7,10 @@ import { notify } from './Feedback';
 export default function CallFollowup({ student, date, callId, onSaved }) {
   const actor = useContext(CommunicationSession);
   const [, refresh] = useState(0), [open, setOpen] = useState(false), [outcome, setOutcome] = useState(''), [remark, setRemark] = useState('');
+  const [historyCallId, setHistoryCallId] = useState(null);
   useEffect(() => { const reload = () => refresh(value => value + 1); window.addEventListener('communication-history-changed', reload); return () => window.removeEventListener('communication-history-changed', reload); }, []);
   const events = readStored(communicationKeys.history, []).filter(row => String(row.studentId) === String(student.id));
-  const call = events.find(row => row.id === callId && row.attendanceDate === date && row.channel === "call");
+  const call = events.find(row => row.id === (historyCallId || callId) && row.attendanceDate === date && row.channel === "call");
   const key = JSON.stringify([date, String(student.id)]);
   const followup = readStored(communicationKeys.followups, {})[key];
   const status = followup?.status || (events.some(row => row.attendanceDate === date && row.channel === 'call') ? 'Contact Attempted' : 'Not Contacted');
@@ -24,7 +25,7 @@ export default function CallFollowup({ student, date, callId, onSaved }) {
         [communicationKeys.history]: history.map(row => row.id === call.id ? { ...row, outcome, remark: remark.trim(), remarkedBy: actor.uid, remarkedAt: new Date().toISOString() } : row),
         [communicationKeys.followups]: { ...followups, [key]: { ...followups[key], status: nextStatus, response: remark.trim(), updatedBy: actor.uid, updatedAt: new Date().toISOString() } },
       }, { [communicationKeys.history]: historySource, [communicationKeys.followups]: followupSource });
-      window.dispatchEvent(new Event('communication-history-changed')); setOpen(true); setOutcome(''); setRemark(''); onSaved();
+      window.dispatchEvent(new Event('communication-history-changed')); setOpen(true); setOutcome(''); setRemark(''); setHistoryCallId(null); onSaved();
     } catch (error) { notify(error.message); }
   };
   const changeStatus = value => {
@@ -37,6 +38,6 @@ export default function CallFollowup({ student, date, callId, onSaved }) {
       <label>Call outcome<select aria-label="Call outcome" value={outcome} onChange={event => setOutcome(event.target.value)}><option value="">Select outcome</option>{callOutcomes.map(value => <option key={value}>{value}</option>)}</select></label>
       <label>Call remark<textarea aria-label="Call follow-up remark" maxLength={1000} value={remark} onChange={event => setRemark(event.target.value)}/></label><button onClick={save}>Save call follow-up</button>
     </div>}
-    {open && <section aria-label={`Contact history for ${student.name}`}><h4>Communication History</h4>{!events.length && <p>No contact attempts yet.</p>}{events.slice().reverse().map(row => <article key={row.id}><strong>{row.channel} · {row.parentName} · {row.contactType}</strong><p>{row.parentMobile} · {new Date(row.initiatedAt).toLocaleString()} · User {row.initiatedBy}</p><p>{row.outcome || row.status} {row.remark}</p></article>)}</section>}
+    {open && <section aria-label={`Contact history for ${student.name}`}><h4>Communication History</h4>{!events.length && <p>No contact attempts yet.</p>}{events.slice().reverse().map(row => <article key={row.id}><strong>{row.channel} · {row.parentName} · {row.contactType}</strong><p>{row.parentMobile} · {new Date(row.initiatedAt).toLocaleString()} · User {row.initiatedBy}</p><p>{row.outcome || row.status} {row.remark}</p>{row.channel==='call'&&row.attendanceDate===date&&<button onClick={()=>{setHistoryCallId(row.id);setOutcome(row.outcome||'');setRemark(row.remark||'')}}>Record follow-up for {row.parentName}</button>}</article>)}</section>}
   </div>;
 }

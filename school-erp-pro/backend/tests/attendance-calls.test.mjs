@@ -70,6 +70,16 @@ test('attendance parent calling and saved follow-up use the correct student', { 
       ['contact-one','father','+919000000101'],['contact-one','mother','+919000000102'],['contact-one','emergency','+919000000103']
     ]);
     assert.ok(records.every(x=>x.initiatedBy===account.localId));
+    // Follow-up must remain available for saved calls, including after navigation.
+    await card.getByRole('button',{name:'Record follow-up for Mother',exact:true}).click();
+    await card.getByLabel('Call outcome',{exact:true}).selectOption('Busy');
+    await card.getByLabel('Call follow-up remark',{exact:true}).fill('Try again later');
+    await card.getByRole('button',{name:'Save call follow-up',exact:true}).click();
+    assert.equal(await card.getByLabel('Contact status for Contact Test').inputValue(),'No Response');
+    const quickCall=row.getByRole('link',{name:'Call Parent',exact:true});
+    assert.equal(await quickCall.getAttribute('href'),'tel:+919000000102');
+    await quickCall.click();
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('erp_pro_absence_communications')).filter(r=>r.channel==='call').length),4);
     await page.setViewportSize({width:390,height:844});
     const mother=card.getByRole('link',{name:'Call Mother',exact:true});
     assert.ok((await mother.boundingBox()).height>=44);

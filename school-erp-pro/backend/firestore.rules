@@ -3,12 +3,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function member(school) { return get(/databases/$(database)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
     function active(school) { return request.auth != null && member(school).active == true && member(school).passwordSetupComplete == true; }
-    function admin(school) { return active(school) && member(school).role in ['Admin','Super Admin']; }
+    function admin(school) { return active(school) && member(school).role in ['Admin','Super Admin','SUPER_ADMIN']; }
     function known(resource) { return resource in ['students','parents','teachers','attendance','academic_years','homework','exams','results','fees','library','sports','scholarships','trips','certificates','notifications','communication_logs','settings']; }
     function moduleAllowed(school, resource) {
       let m = member(school);
       return request.auth != null && m.active == true && m.passwordSetupComplete == true && resource in m.resources && (
-        m.role in ['Admin','Super Admin'] || resource in ['academic_years','notifications','settings'] ||
+        m.role in ['Admin','Super Admin','SUPER_ADMIN'] || resource in ['academic_years','notifications','settings'] ||
         (m.role in ['Teacher','Class Teacher','Subject Teacher'] && resource in ['students','parents','attendance','homework','exams','results','communication_logs','certificates']) ||
         (m.role == 'Sports Teacher' && resource in ['students','sports','communication_logs']) ||
         (m.role == 'Library Staff' && resource in ['students','library','communication_logs']) ||
@@ -18,7 +18,7 @@ service cloud.firestore {
     }
     function scopeAllowed(school, resource, row) {
       let m = member(school);
-      return m.role in ['Admin','Super Admin'] || row.class_id in m.classIds ||
+      return m.role in ['Admin','Super Admin','SUPER_ADMIN'] || row.class_id in m.classIds ||
         (resource == 'students' && row.id in m.studentIds) ||
         ('studentId' in row.data && row.data.studentId in m.studentIds) ||
         (row.class_id == '' && resource in ['academic_years','notifications','settings']) ||
@@ -26,7 +26,7 @@ service cloud.firestore {
     }
     function canWrite(school, collection, row) {
       return moduleAllowed(school, collection) && scopeAllowed(school, collection, row) &&
-        (member(school).role in ['Admin','Super Admin'] || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
+        (member(school).role in ['Admin','Super Admin','SUPER_ADMIN'] || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
     }
     function envelope(id) {
       return request.resource.data.keys().hasOnly(['id','class_id','version','updated_at','updated_by','deleted','data']) &&
@@ -42,7 +42,7 @@ service cloud.firestore {
     function domainValid(collection,row) {
       return collection != 'attendance' || (row.data.studentId is string && row.data.studentId.size() > 0 &&
         row.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') && row.data.academicYear is string &&
-        row.data.academicYear.size() > 0 && row.data.status in ['Present','Absent','Late','Leave']);
+        row.data.academicYear.size() > 0 && row.data.status in ['Present','Absent','Late','Leave','Permission Leave','Approved Leave','Sick Leave','Early Leave','Official Duty','Half Day','Medical Leave','Sports Duty','Trip Duty']);
     }
     function auditMatches(school, collection, id) {
       let key = collection + '_' + id + '_' + string(request.resource.data.version);
@@ -60,8 +60,8 @@ service cloud.firestore {
       allow get: if request.auth != null && (request.auth.uid == uid || admin(school));
       allow list: if admin(school);
       allow update: if admin(school) && uid != request.auth.uid &&
-        resource.data.role != 'Super Admin' &&
-        (member(school).role == 'Super Admin' || (resource.data.role != 'Admin' && request.resource.data.role != 'Admin')) &&
+        !(resource.data.role in ['Super Admin','SUPER_ADMIN']) &&
+        (member(school).role in ['Super Admin','SUPER_ADMIN'] || (resource.data.role != 'Admin' && request.resource.data.role != 'Admin')) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','modules','resources','classIds','studentIds','active']) &&
         request.resource.data.role in ['Admin','Headmaster','Teacher','Class Teacher','Subject Teacher','Clerk','Office Staff','Sports Teacher','Trip In-charge','Library Staff','Accounts Staff'] &&
         request.resource.data.active is bool && request.resource.data.modules is list && request.resource.data.resources is list &&

@@ -4,8 +4,8 @@ service firebase.storage {
     function member(school) { return firestore.get(/databases/(default)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
     function allowed(school, student) {
       let m=member(school);
-      return request.auth != null && m.active == true && m.passwordSetupComplete == true && 'students' in m.resources && m.role in ['Admin','Super Admin','Headmaster','Clerk','Office Staff','Teacher','Class Teacher','Subject Teacher','Sports Teacher','Library Staff','Accounts Staff'] &&
-        (m.role in ['Admin','Super Admin'] || student in m.studentIds ||
+      return request.auth != null && m.active == true && m.passwordSetupComplete == true && 'students' in m.resources && m.role in ['Admin','Super Admin','SUPER_ADMIN','Headmaster','Clerk','Office Staff','Teacher','Class Teacher','Subject Teacher','Sports Teacher','Library Staff','Accounts Staff'] &&
+        (m.role in ['Admin','Super Admin','SUPER_ADMIN'] || student in m.studentIds ||
         firestore.get(/databases/(default)/documents/schools/$(school)/students/$(student)).data.class_id in m.classIds);
     }
     match /schools/{school}/students/{student}/{file} {

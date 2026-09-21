@@ -36,7 +36,7 @@ export function useAbsenceCommunication(date, students, suppliedActor) {
   const absent = students.filter(s => s.status === "Absent");
   const chosen = absent.filter(s => selected.includes(String(s.id)));
   const contactFor = s => {
-    const list = parentContacts(s, settings.primaryContact);
+    const list = parentContacts(s, s.primaryNotificationContact || settings.primaryContact);
     return list.find(c => c.id === contacts[s.id]) || list.find(c => c.mobile) || list[0];
   };
   const eventsFor = s => history.filter(h => String(h.studentId) === String(s.id) && h.attendanceDate === date);
@@ -66,7 +66,7 @@ export function useAbsenceCommunication(date, students, suppliedActor) {
   };
 
   const initiate = (event, s, channel) => {
-    const configured=readStored("erp_pro_message_settings",{}).channels; if(configured&&!configured.some(c=>c.id===channel&&c.enabled)){event.preventDefault();notify("This channel is disabled in Automation Settings.");return;}
+    const configured=readStored("erp_pro_message_settings",{}).channels; if(channel!=="call"&&configured&&!configured.some(c=>c.id===channel&&c.enabled)){event.preventDefault();notify("This channel is disabled in Automation Settings.");return;}
     const resolved = resolve(s);
     if (!resolved) { event.preventDefault(); return; }
     const { master, contact } = resolved;

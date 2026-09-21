@@ -1,5 +1,30 @@
 # Production authentication preparation — 20 September 2026
 
+## Live configuration check — 21 September 2026
+
+### First Super Admin setup: awaiting production rules approval
+
+The user-designated email was found in the existing Firebase Auth project. Its account is enabled and has the password provider. No duplicate account was created and no password, hash or reset token was printed or stored. No reset email has been sent during this setup attempt.
+
+Live Firestore has no documents/missing parent documents under `schools`. Existing live rules allow all reads/writes to any authenticated account. A private local backup was saved at `school-erp-pro/backend/production-rules-backup.local`. Creating an administrator membership under those rules would allow other authenticated users to tamper with it, so membership provisioning has not proceeded.
+
+Prepared canonical `SUPER_ADMIN` support in Firestore/Storage rules, web session role display, member management, web repository and Android repository. Existing `Super Admin` role values remain supported. Five isolated emulator tests passed, including canonical administrator access, prevention of client-created administrator memberships, login, password recovery/change, logout, timeout and data authorization.
+
+The attempted `firebase deploy --only firestore:rules --project school-managment-8c102` was rejected by automatic approval review before execution. Reason: production-wide restrictive rules could lock out existing users or disrupt access; emulator tests do not establish safe live schema/membership rollout. No production rules or user memberships were changed. Explicit rollout approval/live compatibility review is needed before retrying. Prepared rules are `school-erp-pro/backend/firestore.rules`; they deny legacy paths outside the school-scoped structure. This availability impact must be reviewed, not hidden.
+
+Current real-account results: Web login NOT TESTED; Android login NOT TESTED; Super Admin role NOT ASSIGNED; Forgot Password real delivery NOT TESTED. These are separate from passing emulator tests.
+
+- Firebase CLI authorization succeeded. Existing project `school-managment-8c102` is ACTIVE; its default Firestore database exists in `asia-south1`. No new project/database was created.
+- Read the live Identity Toolkit configuration: Email authentication is enabled. The provider accepts email/password; existing email-link support was not disabled.
+- Added `school-erp-v8.vercel.app` to authorized domains, preserving all existing domains, and verified the update.
+- Registered the existing Android package `com.gbsschool.app` in this same project. Android app ID: `1:288441699527:android:4a808addb16fb6060b82e2`.
+- Downloaded the official Android client config to ignored `android-app/GBSSCHOOL/app/google-services.json` and existing web client config to ignored `school-erp-pro/.firebase-web-config.local`. These contain public client configuration, not administrator credentials. They do not by themselves activate runtime environment variables, membership or shared operational data.
+- Still waiting for the user-designated Super Admin EMAIL or UID. The CLI operator's email is not assumed to be the school administrator. No Auth account, password or membership was created/changed, and no reset email was sent.
+- Web runtime environment, school tenant membership, deployed rules, Vercel deployment and configured APK still need completion and real verification. The sign-in configuration warning remains intentionally in place.
+- Same-project registration is verified; real web/Android login and shared-data synchronization are NOT verified. Operational modules still need shared-repository integration as described below.
+
+The remaining sections describe the earlier local implementation and its tests; they are not evidence of successful live activation.
+
 Status: implemented and locally tested; NOT activated or deployed for live use.
 
 ## Changes

@@ -21,6 +21,13 @@ before(async()=>{
  });
 });
 after(async()=>{await env?.cleanup()});
+test('canonical SUPER_ADMIN is authorized and cannot be edited or forged by clients',async()=>{
+ await env.withSecurityRulesDisabled(ctx=>setDoc(doc(ctx.firestore(),`schools/${school}/members/super`),{...grants,active:true,role:'SUPER_ADMIN',modules:['Students'],classIds:[],studentIds:[]}));
+ const superRepo=repo('super');await superRepo.membership();await assertSucceeds(superRepo.list('students'));
+ await assertFails(setDoc(doc(env.authenticatedContext('teacher').firestore(),`schools/${school}/members/forged`),{...grants,active:true,role:'SUPER_ADMIN'}));
+ await assertFails(setDoc(doc(env.authenticatedContext('admin').firestore(),`schools/${school}/members/super`),{...grants,active:false,role:'Teacher'}));
+ await assertFails(getDoc(doc(env.authenticatedContext('outsider').firestore(),'legacy/private-record')));
+});
 test('same stable student record, version checks, unique GR and idempotent retry',async()=>{
  const web=repo('admin'),android=repo('teacher');await web.membership();await android.membership();
  const add=student('student-1','GR1001');await web.mutate(add);

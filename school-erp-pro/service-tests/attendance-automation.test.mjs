@@ -12,6 +12,10 @@ test('calendar: normal, Saturday, Sunday, holiday and special/exam override',()=
  c.overrides['2026-09-20']={...c.weekdays,end:'10:30',reason:'Exam'};assert.equal(daySchedule('2026-09-20',c).closed,false);
  assert.throws(()=>validateAutomation({...c,weekdays:{...c.weekdays,end:'07:00'}}));
  assert.equal(mergedAutomation({dryRun:false}).dryRun,true);
+ assert.throws(()=>validateAutomation({...config(),holidays:{'2026-02-30':{reason:'Invalid date',reopenDate:'2026-03-02'}}}));
+ assert.throws(()=>validateAutomation({...config(),holidays:{'2026-02-27':{reason:'Invalid reopening',reopenDate:'2026-02-30'}}}));
+ assert.throws(()=>validateAutomation({...config(),overrides:{'2026-02-30':{...c.weekdays,reason:'Invalid override'}}}));
+ assert.equal(daySchedule('2026-09-21',{...config(),holidays:{'2026-09-21':{closed:false,reason:'Holiday',reopenDate:'2026-09-22'}}}).closed,true);
 });
 test('all 34 parent and 3 staff templates produce Unicode Marathi and English',()=>{
  assert.equal(Object.keys(automationTemplates).length,37);
