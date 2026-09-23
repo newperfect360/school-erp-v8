@@ -1,5 +1,9 @@
 # Production authentication preparation — 20 September 2026
 
+## Current authoritative status: bootstrap applied
+
+See [PRODUCTION_BOOTSTRAP_RESULT.md](PRODUCTION_BOOTSTRAP_RESULT.md). Under subsequent explicit approval, the tested legacy-compatible activation rules were deployed and the verified existing UID received its gbs-school SUPER_ADMIN membership. All 13 legacy documents are unchanged. Work stopped when the actual live Vercel page still reported missing sign-in configuration. Prior statements below that no membership/rules were applied describe earlier checkpoints and are superseded. Real Web/Android login and synchronization remain unverified.
+
 ## Latest clean-setup decision
 
 The owner approved `gbs-school` and identified the legacy records as trial data, then selected **Keep all production writes paused** at the membership-security gate. See [CLEAN_PRODUCTION_SETUP_STATUS.md](CLEAN_PRODUCTION_SETUP_STATUS.md). Web/Android tenant configuration is prepared locally and the web build passes; no production tenant, membership, cleanup or rules deployment has occurred. Earlier tenant-ID questions are superseded by this approval.
