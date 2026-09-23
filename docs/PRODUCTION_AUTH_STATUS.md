@@ -1,5 +1,9 @@
 # Production authentication preparation — 20 September 2026
 
+## Latest clean-setup decision
+
+The owner approved `gbs-school` and identified the legacy records as trial data, then selected **Keep all production writes paused** at the membership-security gate. See [CLEAN_PRODUCTION_SETUP_STATUS.md](CLEAN_PRODUCTION_SETUP_STATUS.md). Web/Android tenant configuration is prepared locally and the web build passes; no production tenant, membership, cleanup or rules deployment has occurred. Earlier tenant-ID questions are superseded by this approval.
+
 ## 23 September safety activation update
 
 See [SAFE_PRODUCTION_ACTIVATION.md](SAFE_PRODUCTION_ACTIVATION.md) for the latest read-only inventory, private backup, migration blockers and manual information needed. Existing administrator UID reverified; 13 legacy documents preserved and backed up. Complete current emulator suite: 12 PASS, 0 FAIL. Tenant ID is pending the owner's response. No production membership, rules or passwords changed. Live Web/Android login and synchronization remain unverified; this is not production activation.
