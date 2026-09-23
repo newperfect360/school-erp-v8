@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { cloudEnabled, schoolFirebase } from './firebaseClient';
+import {developmentEnabled,getDevelopmentSession,subscribeDevelopment,developmentLogout} from '@development-auth';
 
 export default function useSchoolSession() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(getDevelopmentSession);
   const [status, setStatus] = useState(cloudEnabled ? 'Checking sign-in…' : 'School sign-in configuration is required. Contact your administrator.');
   useEffect(() => {
+    if (developmentEnabled) { setStatus('Local development login enabled. Firebase access is disabled in this mode.'); return subscribeDevelopment(setSession); }
     if (!cloudEnabled) return;
     let client;
     try { client = schoolFirebase(); } catch { setStatus('School sign-in configuration is incomplete.'); return; }
@@ -28,7 +30,7 @@ export default function useSchoolSession() {
   }, []);
   const uid = session?.uid;
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || developmentEnabled) return;
     const started = Date.now(); let activity = started;
     const expire = () => { if (Date.now() - activity >= 15 * 60_000 || Date.now() - started >= 8 * 60 * 60_000) { setSession(null); void signOut(schoolFirebase().auth); } };
     const touch = () => { expire(); activity = Date.now(); };
@@ -38,5 +40,5 @@ export default function useSchoolSession() {
     const timer = setInterval(expire, 1000);
     return () => { clearInterval(timer); events.forEach(event => window.removeEventListener(event, touch)); window.removeEventListener('focus', expire); };
   }, [uid]);
-  return { session, status, logout: async () => { setSession(null); if (cloudEnabled) await signOut(schoolFirebase().auth); } };
+  return { session, status, logout: async () => { setSession(null); if (developmentEnabled) { developmentLogout(); return; } if (cloudEnabled) await signOut(schoolFirebase().auth); } };
 }

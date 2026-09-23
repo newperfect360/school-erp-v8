@@ -1,4 +1,5 @@
 import { useState } from "react";
+import {developmentEnabled,developmentLogin} from '@development-auth';
 import { signIn, forgotPassword, resetPassword, authMessage } from "../backend/productionAuth";
 import Icon from "../components/Icon";
 import { DownloadAppCard } from './DownloadApp';
@@ -15,6 +16,7 @@ export default function SchoolLogin({ settings, status }) {
     event.preventDefault(); const form = event.currentTarget, data = new FormData(form);
     setBusy(true); setError(''); setMessage('');
     try {
+      if (developmentEnabled) { developmentLogin(data.get('email'),data.get('password')); form.reset(); return; }
       if (mode === 'forgot') { await forgotPassword(data.get('email')); setMessage('If this account is eligible, a reset link will be sent to its email address.'); }
       else if (mode === 'reset') {
         if (data.get('password') !== data.get('confirm')) throw Error('Passwords do not match.');
@@ -34,11 +36,11 @@ export default function SchoolLogin({ settings, status }) {
     <main className="academic-login-main"><div className="login-topline"><span>{t("School management portal", "शालेय व्यवस्थापन पोर्टल")}</span><LanguageSwitch /></div>
       <form className="academic-login-form" onSubmit={submit}>
         <h2>{mode === 'forgot' ? 'Forgot Password' : mode === 'reset' ? 'Reset Password' : t('Welcome back.', 'Welcome back.')}</h2>
-        <p>Sign in with your authorized school email account.</p>
-        {mode !== 'reset' && <label>Email<input name="email" aria-label="Email" type="email" autoComplete="username" required /></label>}
+        <p>{developmentEnabled ? 'DEVELOPMENT / TEST MODE — local test records only.' : 'Sign in with your authorized school email account.'}</p>
+        {mode !== 'reset' && <label>{developmentEnabled ? 'Username' : 'Email'}<input name="email" aria-label={developmentEnabled ? 'Username' : 'Email'} type={developmentEnabled ? 'text' : 'email'} autoComplete="username" required /></label>}
         {mode !== 'forgot' && <label>{mode === 'reset' ? 'New password' : 'Password'}<div className="input-with-icon"><input name="password" aria-label="Password" autoComplete={mode === 'reset' ? 'new-password' : 'current-password'} type={visible ? 'text' : 'password'} minLength={mode === 'reset' ? 12 : undefined} required /><button type="button" aria-label={visible ? 'Hide password' : 'Show password'} onClick={()=>setVisible(!visible)}>{visible ? 'Hide' : 'Show'}</button></div></label>}
         {mode === 'reset' && <label>Confirm new password<input name="confirm" type={visible ? 'text' : 'password'} autoComplete="new-password" minLength={12} required /></label>}
-        <button type="button" className="login-help text-button" onClick={()=>{setMode(mode === 'login' ? 'forgot' : 'login');setError('');setMessage('')}}>{mode === 'login' ? 'Forgot Password' : 'Back to Login'}</button>
+        {!developmentEnabled && <button type="button" className="login-help text-button" onClick={()=>{setMode(mode === 'login' ? 'forgot' : 'login');setError('');setMessage('')}}>{mode === 'login' ? 'Forgot Password' : 'Back to Login'}</button>}
         {status && <p role="status">{status}</p>}{message && <p role="status">{message}</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
         <button type="submit" className="school-button login-submit" disabled={busy} aria-label={mode === 'login' ? 'Login' : 'Submit password request'}>{mode === 'login' ? 'Sign in to school' : mode === 'forgot' ? 'Send reset link' : 'Reset Password'}</button>

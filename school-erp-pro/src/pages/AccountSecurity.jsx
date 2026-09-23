@@ -12,6 +12,7 @@ export default function AccountSecurity({ session }) {
     catch (error) { setMessage(error.code ? authMessage(error) : error.message); }
     finally { setBusy(false); }
   };
+  if(session.development) return <section className="school-panel workflow-panel"><h2>Development account</h2><p>DEVELOPMENT / TEST MODE. Full local module access; Firebase accounts and permissions cannot be changed from this session.</p><ul>{session.modules.map(module=><li key={module}>{module}</li>)}</ul></section>;
   return <section className="school-panel workflow-panel"><h2>Account security</h2><p>{session.email} · {session.role}</p>
     <h3>Change Password</h3><form onSubmit={submit}><div className="form-grid">
       {[['current','Current password'],['next','New password'],['confirm','Confirm new password']].map(([name,label]) => <label key={name}>{label}<input required name={name} type={visible ? 'text' : 'password'} autoComplete={name === 'current' ? 'current-password' : 'new-password'} minLength={name === 'current' ? undefined : 12} maxLength={128}/></label>)}

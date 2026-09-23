@@ -2,10 +2,12 @@ import {initializeApp,getApps} from 'firebase/app';
 import {getAuth,connectAuthEmulator,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {getFirestore,connectFirestoreEmulator} from 'firebase/firestore';
 import {getStorage,connectStorageEmulator} from 'firebase/storage';
+import {developmentEnabled} from '@development-auth';
 
 export const cloudEnabled=import.meta.env.VITE_SCHOOL_DATA_MODE==='firebase';
 let client;
 export function schoolFirebase(){
+ if(developmentEnabled)throw Error('Firebase access is disabled for the local development account.');
  if(client)return client;
  if(!cloudEnabled)throw Error('Shared backend is not configured.');
  const emulator=import.meta.env.VITE_FIREBASE_EMULATORS==='true';
