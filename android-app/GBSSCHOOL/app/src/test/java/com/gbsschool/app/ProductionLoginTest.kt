@@ -4,7 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.gbsschool.app.core.designsystem.SchoolTheme
-import com.gbsschool.app.navigation.SchoolApp
+import com.gbsschool.app.feature.auth.ProductionSignIn
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,7 +17,7 @@ class ProductionLoginTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test fun unconfiguredBuildCannotEnterWithoutAuthentication() {
-        compose.setContent { SchoolTheme { SchoolApp() } }
+        compose.setContent { SchoolTheme { ProductionSignIn(configurationAvailable = false) } }
         compose.onNodeWithText("School sign-in configuration is required. Contact your administrator.").assertExists()
         compose.onNodeWithText("Sign in", substring = false).performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("Explore preview dashboard").assertDoesNotExist()

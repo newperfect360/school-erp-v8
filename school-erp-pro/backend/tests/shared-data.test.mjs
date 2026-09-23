@@ -39,6 +39,17 @@ test('same stable student record, version checks, unique GR and idempotent retry
  await assert.rejects(web.mutate(student('student-2','GR1001')),/already belongs/);
  await assert.rejects(web.mutate({...edit,expectedVersion:2,data:{...edit.data,grNo:'OTHER'}}),/immutable/);
 });
+test('atomic imports reject duplicate GR and roll back every row on stale versions',async()=>{
+ const web=repo('admin');await web.membership();
+ const first=student('batch-first','TEST-BATCH-1'),second=student('batch-second','TEST-BATCH-2');
+ await web.mutateMany([first,second]);
+ const update={...first,expectedVersion:1,mutationId:crypto.randomUUID(),data:{...first.data,name:'TEST revised'}};
+ await web.mutate(update);
+ await assert.rejects(web.mutateMany([{...second,expectedVersion:1,mutationId:crypto.randomUUID(),data:{...second.data,name:'Must not save'}},{...update,mutationId:crypto.randomUUID()}]),{code:'sync/conflict'});
+ assert.equal((await web.read('students',second.id)).data.name,'Test Student');
+ await assert.rejects(web.mutateMany([student('batch-dup-a','TEST-DUP-GR'),student('batch-dup-b','TEST-DUP-GR')]),/Duplicate GR/);
+ await assert.rejects(web.read('students','batch-dup-a'),/unavailable/);
+});
 test('SUPER_ADMIN administrative matrix and Teacher/Staff restrictions',async()=>{
  const modules=['Students','Attendance','Teachers','Settings','Formats','Reports','AccessSetup'];
  await env.withSecurityRulesDisabled(async ctx=>{

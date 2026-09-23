@@ -1,10 +1,11 @@
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
 import { readStored, commitStoredBatch, localDate } from '../storage';
 import { lifecycleActive } from './studentLifecycle';
 import { yearForDate } from './academicYears';
 import { automationKey, mergedAutomation, draftKey, draftId, submissionKey, classKey, studentStatuses, attendanceEvents, planMessages, daySchedule, attendanceStats } from './attendanceAutomation';
 export const configForAttendance = () => mergedAutomation(readStored(automationKey, {}));
 export function markedAbsent(student, date) {
-  const draft = readStored(draftKey, {})[draftId(student.academicYear, date, student.id)];
+  const draft = sharedOperationalEnabled ? null : readStored(draftKey, {})[draftId(student.academicYear, date, student.id)];
   return (draft?.status || readStored('erp_pro_attendance', {})[date]?.[student.id]) === 'Absent';
 }
 export function reviewAttendance(year, standard, division, date) {

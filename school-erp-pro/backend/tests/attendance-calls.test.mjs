@@ -6,7 +6,7 @@ import { initializeTestEnvironment, assertFails } from '@firebase/rules-unit-tes
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { chromium } from '../../node_modules/@playwright/test/index.mjs';
 
-test('attendance parent calling and saved follow-up use the correct student', { timeout: 180000 }, async () => {
+test('development attendance parent calling and saved follow-up use the correct student', { timeout: 180000 }, async () => {
   const projectId = 'demo-gbs-school', base = 'http://127.0.0.1:5298';
   assert.ok(process.env.FIREBASE_AUTH_EMULATOR_HOST, 'Must run inside Firebase emulators:exec');
   const env = await initializeTestEnvironment({ projectId, firestore: { host: '127.0.0.1', port: 8080, rules: await readFile(new URL('../firestore.rules', import.meta.url), 'utf8') } });
@@ -23,7 +23,7 @@ test('attendance parent calling and saved follow-up use the correct student', { 
   await assertFails(updateDoc(doc(env.authenticatedContext('staff-member').firestore(), 'schools/auth-school/members/staff-member'), { role: 'Super Admin' }));
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5298', '--strictPort'], {
     cwd: new URL('../../', import.meta.url), stdio: 'ignore', windowsHide: true,
-    env: { ...process.env, VITE_SCHOOL_DATA_MODE: 'firebase', VITE_SCHOOL_ID: 'auth-school', VITE_FIREBASE_PROJECT_ID: projectId,
+    env: { ...process.env, DEV_ADMIN_LOGIN: 'true', VITE_SCHOOL_DATA_MODE: 'firebase', VITE_SCHOOL_ID: 'auth-school', VITE_FIREBASE_PROJECT_ID: projectId,
       VITE_FIREBASE_API_KEY: 'emulator-only', VITE_FIREBASE_APP_ID: 'emulator-web', VITE_FIREBASE_AUTH_DOMAIN: `${projectId}.firebaseapp.com`, VITE_FIREBASE_EMULATORS: 'true' },
   });
   let browser;
@@ -33,8 +33,8 @@ test('attendance parent calling and saved follow-up use the correct student', { 
     const page = await browser.newPage(); await page.goto(base);
 
     await page.getByRole('button',{name:'EN',exact:true}).click();
-    await page.getByLabel('Email',{exact:true}).fill(email);
-    await page.getByLabel('Password',{exact:true}).fill(password);
+    await page.getByLabel('Username',{exact:true}).fill('admin');
+    await page.getByLabel('Password',{exact:true}).fill('admin1234');
     await page.getByRole('button',{name:'Login',exact:true}).click();
     await page.locator('.portal-shell').waitFor();
     await page.evaluate(() => {
@@ -69,7 +69,7 @@ test('attendance parent calling and saved follow-up use the correct student', { 
     assert.deepEqual(records.filter(x=>x.channel==='call').map(x=>[x.studentId,x.contactType,x.parentMobile]),[
       ['contact-one','father','+919000000101'],['contact-one','mother','+919000000102'],['contact-one','emergency','+919000000103']
     ]);
-    assert.ok(records.every(x=>x.initiatedBy===account.localId));
+    assert.ok(records.every(x=>x.initiatedBy==='development-admin'));
     // Follow-up must remain available for saved calls, including after navigation.
     await card.getByRole('button',{name:'Record follow-up for Mother',exact:true}).click();
     await card.getByLabel('Call outcome',{exact:true}).selectOption('Busy');

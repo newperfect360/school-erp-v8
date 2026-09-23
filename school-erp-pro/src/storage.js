@@ -1,3 +1,4 @@
+import {isSharedKey,sharedSnapshot} from "./backend/sharedReadCache";
 import {resolveSchoolSettings} from './services/schoolIdentity';
 import { notify } from "./components/Feedback";
 import { useRef, useState } from "react";
@@ -5,7 +6,7 @@ import {tagNewYearRecords,yearForDate,academicYears} from './services/academicYe
 
 export function readStored(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = isSharedKey(key)?sharedSnapshot(key):localStorage.getItem(key);
     if (raw === null) return key === "schoolSettings" ? resolveSchoolSettings(fallback) : fallback;
     const value = JSON.parse(raw);
     if (Array.isArray(fallback) ? !Array.isArray(value) : !value || typeof value !== "object" || Array.isArray(value)) {
@@ -18,6 +19,7 @@ export function readStored(key, fallback) {
 }
 
 export function writeStored(key, value) {
+  if(isSharedKey(key)){notify("Use the shared school save action. Browser-local writes are disabled for this register.");return false;}
   if(key === "schoolSettings")value=resolveSchoolSettings(value);
   try {
     const existing = localStorage.getItem(key);
@@ -60,6 +62,7 @@ export function useStoredState(key, fallback) {
 
 // Synchronous multi-key local commit with rollback. This is not a cloud transaction.
 export function commitStoredBatch(entries, expected = {}) {
+  if(Object.keys(entries).some(isSharedKey))throw Error("This register requires an acknowledged Firestore transaction. No local copy was saved.");
   entries=Object.fromEntries(Object.entries(entries).map(([key,value])=>[key,tagNewYearRecords(key,value,readStored(key,[]))]));
   if(entries.erp_pro_attendance){const years=readStored('erp_pro_attendance_years',{}),before=readStored('erp_pro_attendance',{});for(const date of Object.keys(entries.erp_pro_attendance)){if(JSON.stringify(before[date])===JSON.stringify(entries.erp_pro_attendance[date]))continue;const year=years[date]||yearForDate(date);if(academicYears().some(y=>y.id===year&&y.status!=='Open'))throw Error('Attendance year is closed or archived. Reopen it before editing.');years[date]=year;}entries.erp_pro_attendance_years=years;}
   const previous = Object.fromEntries(Object.keys(entries).map(key => [key, localStorage.getItem(key)]));

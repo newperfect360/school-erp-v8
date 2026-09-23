@@ -57,7 +57,7 @@ Web evidence includes: student creation/edit/archive/restore, Unicode Excel/phot
 
 ## Remaining implementation and runtime gaps
 
-1. Web operational pages still use localStorage in development. The new Android workspace uses Firestore. They do NOT yet form a synchronized operational system. A repository adapter alone is not sufficient: asynchronous acknowledged writes, conflict handling and domain mappings must be wired into the existing Web workflows.
+1. The development admin remains an isolated browser-local account. Firebase-authenticated Web workflows now use shared Firestore for students, teachers/staff, attendance, fees, notices, results, library, sports, trips and academic years, including reviewed student imports and lifecycle changes. Shared settings/class masters, staff attendance, document/asset persistence, backup/restore and remaining legacy workflows still require integration. Do not represent development-admin local data as Android-synchronized.
 2. Android native screens cover only the supported shared collections. Native lifecycle, templates/documents, backup/import/export and several detailed module workflows are not complete. Matching project/tenant settings is not sync proof.
 3. No Android device or AVD is connected/installed. Real Android login, CRUD, dialer, logout and both sync directions are untested.
 4. SMS/WhatsApp device-composer fallback is available; unattended provider sending, delivery confirmation and scheduled production execution remain incomplete/unverified. Provider selection requested; no secrets requested.
@@ -75,3 +75,20 @@ Web evidence includes: student creation/edit/archive/restore, Unicode Excel/phot
 - New tests: school-erp-pro/tests/development-workflows.spec.js, fee-ledger.test.mjs; suite: school-erp-pro/playwright.development.config.js.
 
 Do not label this project complete or production-ready based on these results.
+
+## Shared integration verification — 2026-09-23
+
+Actual Edge forms and the native Android Firebase SDK were exercised together against isolated `demo-gbs-school` emulators. No production users, passwords, records or security rules were changed.
+
+- PASS: Web-created student, teacher/staff, fee, notice, result, library item, sports item, trip, attendance and academic-year records read/updated through the native repository; updates visible on Web.
+- PASS: native Compose Teacher Add/Save form creates a Firestore record which appears on Web. This is a Robolectric UI test, not a physical-device test.
+- PASS: real Web CSV import reaches Android with stable ID/GR. Web division-change workflow retains enrollment and movement history on the same shared student document.
+- PASS: Web absent-student father dial target and shared call-follow-up save. Actual telecom connection/delivery is not verified.
+- PASS: atomic multi-record writes reject stale versions and duplicate GR without partial writes; mandatory audit and role restrictions tested in emulators.
+- PASS: full backend regression, 15/15 tests, including separate Firebase login/recovery/logout/session tests and explicitly labelled development-only attendance/communication tests. Emulator shutdown emits a tooling NullPointerException after successful completion; no test failures were reported.
+- PASS: 37 development Web scenarios; six targeted import/year/attendance checks and five lifecycle/contact regressions after integration edits.
+- PASS: debug APK build, Android lint, current login UI unit tests. Native interoperability test requires the emulator runner; ordinary unit runs skip it deliberately.
+
+Cloud write failures retain forms and display errors. Cloud views hydrate from server-confirmed memory snapshots rather than browser-local operational copies. There is no automatic upload of old browser data. Large-batch limits, multi-device lending stock races, complete native workflow parity and provider sending remain unfinished; these are software work, not merely physical-device checks.
+
+Reproduction: `school-erp-pro/backend/tests/native-web-interop.test.mjs` launches an isolated Firebase-authenticated Web build, drives actual forms, and runs `NativeRepositoryInteropTest.kt` against the same emulator tenant. `shared-data.test.mjs` covers transaction/security invariants. Java 21 and the existing Android SDK are required.

@@ -1,3 +1,4 @@
+import {useSharedRecords} from '../backend/useSharedRecords';
 import {enrollment,academicSnapshot} from '../services/studentLifecycle';
 import {suggestMarathiName} from "../services/bilingualStudent";
 import {normalizeStudentRow} from "../services/excel";
@@ -12,6 +13,7 @@ import {matchPhotos,imageData} from '../services/photoImport';
 
 export default function StudentImport({ onDone, onBack, onNavigate }) {
   const { t } = useLanguage();
+  const [sharedStudents,saveSharedStudents,connection]=useSharedRecords("students","erp_pro_students");
   const [file, setFile] = useState(null), [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("create"), [fields, setFields] = useState(updateFields);
   const [columns, setColumns] = useState(studentColumns.map(([, field]) => field));
@@ -46,13 +48,13 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
   const suggestedOverrides = Object.fromEntries((file?.rows||[]).map((row,index)=>{const student=normalizeStudentRow(row,file.mapping);return [index,overrides[index]??(!student.student_name_mr?{student_name_mr:suggestMarathiName(student.name)||''}:{})]}));
   const validate = () => {
     try {
-      const source = localStorage.getItem("erp_pro_students");
+      const source = connection.shared?JSON.stringify(sharedStudents):localStorage.getItem("erp_pro_students");
       const existing = source === null ? [] : JSON.parse(source);
       if (!Array.isArray(existing)) throw new Error("Student storage is invalid. Restore a reviewed backup first.");
       setReview({ source, existing, results: reviewStudentImport(file.rows, file.mapping, existing, { mode, fields, overrides: suggestedOverrides }) }); resetPhotos();
     } catch (error) { notify(error.message); }
   };
-  const confirm = () => {
+  const confirm = async () => {
     if (!review || !acknowledged) return;
     try {
       if(photos.length&&(!photoPlan||photoPlan.rows.some(r=>photoChoices[r.index]!=='skip'&&(r.error||photoChoices[r.index]!=='attach'))))throw Error('Review photo matches and explicitly skip invalid photos first.');
@@ -63,7 +65,11 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
       if (!change.added && !change.updated) throw new Error("No rows are selected for import/update.");
       const timestamp = new Date().toISOString(), id = crypto.randomUUID();
       const history = { id, fileName: file.name, importedAt: timestamp, successCount: change.added, updatedCount: change.updated, skippedCount: change.skipped, totalRows: file.rows.length, mode };
-      commitStoredBatch({
+      if(connection.shared){
+        if(review.source!==JSON.stringify(sharedStudents))throw Error("Student records changed after preview. Validate again.");
+        const next=change.students.map(student=>{const old=review.existing.find(r=>r.id===student.id);return old&&JSON.stringify(old)===JSON.stringify(student)?student:{...student,importBatch:history,enrollmentHistory:[...(old?.enrollmentHistory||[]),...(old&&JSON.stringify(enrollment(old))!==JSON.stringify(enrollment(student))?[{...enrollment(old),at:timestamp,reason:"Reviewed Excel update"}]:[])]};});
+        if(!await saveSharedStudents(next))return;
+      }else commitStoredBatch({
         erp_pro_students: change.students,
         ...(attached.length?{erp_pro_photo_import_history:[...readStored('erp_pro_photo_import_history',[]),{id:crypto.randomUUID(),at:timestamp,field:photoField,studentIds:[...photoMap.keys()],count:attached.length,fileName:file.name}]}:{}),
         erp_pro_student_movements:[...readStored('erp_pro_student_movements',[]),...change.students.flatMap(s=>{const old=review.existing.find(p=>p.id===s.id);if(old&&JSON.stringify(enrollment(old))===JSON.stringify(enrollment(s)))return [];return [{id:crypto.randomUUID(),studentId:s.id,studentName:s.name,grNo:s.grNo,action:old?'Class Changed (reviewed Excel update)':'Added',type:old?'Class Changed':'Added',oldValue:old?enrollment(old):null,newValue:enrollment(s),reason:'Reviewed Excel import '+file.name,actor:'local-review',createdAt:timestamp}]})],
@@ -106,7 +112,7 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
           <button className="school-link" onClick={()=>onNavigate('PhotoImport')}>Open photo-only importer for already saved students →</button>
         </section>
         <label className="review-ack"><input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} disabled={!ready||!photosReady} />I reviewed all rows and before/after changes. Save only the selected actions.</label>
-        <button className="school-button" onClick={confirm} disabled={!ready || !photosReady || !acknowledged}>{t("Confirm Import")}</button>
+        <button className="school-button" onClick={confirm} disabled={connection.busy || !ready || !photosReady || !acknowledged}>{t("Confirm Import")}</button>
       </section>
     </>}
     </fieldset><section className="school-panel workflow-panel"><h3>{t("Import history")}</h3>{readStored("erp_pro_import_history", []).slice().reverse().slice(0, 20).map(item => <p key={item.id}>{item.fileName} · {item.importedAt} · {item.successCount} added / {item.updatedCount || 0} updated</p>)}{!readStored("erp_pro_import_history", []).length && <p>No imports yet. Confirmed imports will appear here.</p>}</section>

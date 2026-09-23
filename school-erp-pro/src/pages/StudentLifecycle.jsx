@@ -15,7 +15,7 @@ export default function StudentLifecycle({studentId,role,onNavigate,initialStatu
  const update=(key,value)=>{setForm({...form,[key]:value});clear()};
  const choose=(id,checked)=>{setIds(checked?[...new Set([...ids,id])]:ids.filter(i=>i!==id));clear()};
  const prepare=()=>{try{setPreview(previewMovements(ids,id=>({...form,...overrides[id],...(form.action==='Promote'||['Repeat','Detained','Result Pending'].includes(form.action)?{division:form.division||students.find(s=>s.id===id)?.division,rollNo:overrides[id]?.rollNo??students.find(s=>s.id===id)?.rollNo}: {})})));setReviewed(false)}catch(e){notify(e.message)}};
- const confirm=()=>{if(!reviewed||!preview)return;try{commitMovements(preview);clear();setIds([]);refresh(revision+1);notify('Lifecycle changes saved. Student IDs and linked history retained.')}catch(e){notify(e.message)}};
+ const confirm=async()=>{if(!reviewed||!preview)return;try{await commitMovements(preview);clear();setIds([]);refresh(revision+1);notify('Lifecycle changes saved. Student IDs and linked history retained.')}catch(e){notify(e.message)}};
  const rows=visible.map(s=>({studentId:s.id,GR:s.grNo,Name:s.name,Status:s.archivedAt?'Archived':s.status||'Active',AcademicYear:s.academicYear,Standard:s.className,Division:s.division,Roll:s.rollNo}));
  const selected=students.filter(s=>ids.includes(s.id));
  const movementRows=movements.filter(h=>!ids.length||ids.includes(h.studentId));

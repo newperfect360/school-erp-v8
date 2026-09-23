@@ -1,9 +1,10 @@
+import {useSharedRecords} from "../backend/useSharedRecords";
 import {exportRows} from '../services/excel';
 import StaffAttendance from '../components/StaffAttendance';
 import { notify } from "../components/Feedback";
 import { useMemo, useState } from "react";
 import { createBackup, recordAudit } from "../services/audit";
-import { readStored, useStoredState } from "../storage";
+import { readStored } from "../storage";
 
 const modules = {
   Admissions: { title: "प्रवेश आणि GR", eyebrow: "STUDENT INTAKE", key: "erp_pro_admissions", fields: ["Admission Number", "GR Number", "Admission Date", "Previous School", "Previous Standard", "Class Allocation", "Status"] },
@@ -53,16 +54,17 @@ export default function SchoolOperations({ module = "Admissions" }) {
 
 function SchoolRecordPanel({ module }) {
   const definition = modules[module] || modules.Admissions;
-  const [items, setItems] = useStoredState(definition.key, []);
+  const aliases=module==="Staff"?Object.fromEntries(definition.fields.map((label,index)=>[label,["employeeId","name","designation","subject","mobile","joiningDate"][index]])):{};
+  const [items, setItems, connection] = useSharedRecords(module==="Staff"?"teachers":null,definition.key,{kind:module==="Staff"?"staff":"",aliases});
   const [form, setForm] = useState(() => Object.fromEntries(definition.fields.map((field) => [field, ""])));
   const [query, setQuery] = useState("");
   const visibleItems = useMemo(() => items.filter((item) => Object.values(item).join(" ").toLowerCase().includes(query.toLowerCase())), [items, query]);
 
-  const save = () => {
+  const save = async () => {
     if (definition.fields.slice(0, 2).some((field) => !form[field]?.trim())) { notify("पहिली आवश्यक माहिती भरा"); return; }
     const item = { ...form, id: form.id || crypto.randomUUID(), createdAt: form.createdAt || new Date().toISOString() };
-    if (!setItems(form.id ? items.map(row=>row.id===form.id?item:row) : [...items, item])) return;
-    recordAudit(`${definition.title} नोंद तयार`, { id: item.id });
+    if (!await setItems(form.id ? items.map(row=>row.id===form.id?item:row) : [...items, item])) return;
+    if(!connection.shared)recordAudit(`${definition.title} नोंद तयार`, { id: item.id });
     setForm(Object.fromEntries(definition.fields.map((field) => [field, ""])));
   };
 
@@ -70,9 +72,9 @@ function SchoolRecordPanel({ module }) {
 
   return <div className="page module-page">{module === "Staff" && <StaffAttendance/>}
     <div className="module-heading"><div><span className="eyebrow">{definition.eyebrow}</span><h2>{definition.title}</h2><p>शाळेच्या दैनंदिन कामकाजासाठी सुरक्षित, शोधता येणारी नोंदवही.</p></div><div className="module-count">{items.length}<span>एकूण नोंदी</span></div></div>
-    <section className="workflow-panel"><div className="panel-title"><h3>नवीन नोंद</h3><span>डेटा migration किंवा delete होत नाही</span></div><div className="form-grid">{definition.fields.map((field) => <input key={field} aria-label={field} placeholder={field} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />)}</div><button onClick={save}>नोंद जतन करा</button>{module === "Admissions" && <button className="button-muted" onClick={backup}>Backup डाउनलोड</button>}</section>
+    <section className="workflow-panel"><div className="panel-title"><h3>नवीन नोंद</h3><span>डेटा migration किंवा delete होत नाही</span></div><div className="form-grid">{definition.fields.map((field) => <input key={field} aria-label={field} placeholder={field} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />)}</div><p role="status">{connection.status}</p><button disabled={connection.busy} onClick={save}>नोंद जतन करा</button>{module === "Admissions" && <button className="button-muted" onClick={backup}>Backup डाउनलोड</button>}</section>
     <input className="module-search" aria-label="नोंदी शोधा" placeholder={`${definition.title} मध्ये शोधा`} value={query} onChange={(event) => setQuery(event.target.value)} />
-    <button onClick={()=>exportRows(visibleItems,`${module}.xlsx`)}>Export Excel</button><div className="record-grid">{visibleItems.map((item) => <article className="record-card text-record" key={item.id}><div className="record-card-body"><span className="record-kicker">{item.createdAt?.slice(0, 10)}</span><h3>{Object.values(item).filter((value) => value && typeof value === "string").slice(0, 2).join(" · ")}</h3><p>{Object.entries(item).filter(([key]) => key !== "id" && key !== "createdAt").map(([key, value]) => `${key}: ${value}`).join(" · ")}</p><button onClick={()=>setForm({...item})}>Edit</button><button onClick={()=>{if(window.confirm("Delete this record?")){if(setItems(items.filter(row=>row.id!==item.id)) && form.id===item.id)setForm(Object.fromEntries(definition.fields.map(field=>[field,""])));}}}>Delete</button></div></article>)}</div>
+    <button onClick={()=>exportRows(visibleItems,`${module}.xlsx`)}>Export Excel</button><div className="record-grid">{visibleItems.map((item) => <article className="record-card text-record" key={item.id}><div className="record-card-body"><span className="record-kicker">{item.createdAt?.slice(0, 10)}</span><h3>{definition.fields.slice(0,2).map(field=>item[field]).filter(Boolean).join(" · ")}</h3><p>{Object.entries(item).filter(([key]) => key !== "id" && key !== "createdAt" && key !== "__version" && key !== "kind").map(([key, value]) => `${key}: ${value}`).join(" · ")}</p><button onClick={()=>setForm({...item})}>Edit</button><button onClick={async()=>{if(window.confirm("Delete this record?")){if(await setItems(items.filter(row=>row.id!==item.id)) && form.id===item.id)setForm(Object.fromEntries(definition.fields.map(field=>[field,""])));}}}>Delete</button></div></article>)}</div>
     {visibleItems.length === 0 && <div className="empty-state"><strong>अद्याप नोंदी नाहीत</strong><span>वरील formमधून पहिली नोंद तयार करा.</span></div>}
   </div>;
 }

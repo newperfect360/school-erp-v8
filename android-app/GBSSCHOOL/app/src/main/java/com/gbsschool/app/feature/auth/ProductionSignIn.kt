@@ -22,8 +22,8 @@ import com.gbsschool.app.feature.operations.SchoolWorkspace
 
 /** Uses the same Firebase Auth users and schools/{school}/members/{uid} as web. */
 @Composable
-fun ProductionSignIn() {
-    val configured = BuildConfig.FIREBASE_CONFIGURED && BuildConfig.SCHOOL_TENANT_ID.isNotBlank()
+fun ProductionSignIn(configurationAvailable: Boolean = true) {
+    val configured = configurationAvailable && BuildConfig.FIREBASE_CONFIGURED && BuildConfig.SCHOOL_TENANT_ID.isNotBlank()
     val auth = remember { if (configured) FirebaseAuth.getInstance() else null }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }

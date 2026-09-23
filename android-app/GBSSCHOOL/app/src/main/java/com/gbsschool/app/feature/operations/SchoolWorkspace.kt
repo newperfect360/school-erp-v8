@@ -17,27 +17,28 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 
-private data class Screen(val module: String, val title: String, val collection: String, val fields: List<String>)
+private data class Screen(val module: String, val title: String, val collection: String, val fields: List<String>, val kind: String? = null)
 private val screens = listOf(
     Screen("Students", "Students / विद्यार्थी", "students", listOf("name","student_name_mr","grNo","className","division","rollNo","academicYear","fatherName","fatherMobile","motherName","motherMobile","emergencyName","emergencyContact")),
-    Screen("Teachers", "Teachers / Staff", "teachers", listOf("name","designation","subject","mobile","email")),
+    Screen("Teachers", "Teachers", "teachers", listOf("name","designation","subject","mobile","email"),"teacher"),
+    Screen("Staff", "Staff", "teachers", listOf("employeeId","name","designation","subject","mobile","joiningDate"),"staff"),
     Screen("Attendance", "Attendance / उपस्थिती", "attendance", listOf("studentId","date","academicYear","status","arrivalTime","outTime","reason","remark")),
     Screen("Fees", "Fees / शुल्क", "fees", listOf("studentId","type","total","paid","receipt","date")),
-    Screen("Notices", "Notices / सूचना", "notifications", listOf("title","text","date")),
+    Screen("Notices", "Notices / सूचना", "notifications", listOf("title","audience","text","date","channel"),"notice"),
     Screen("AcademicYears", "Academic years", "academic_years", listOf("name","startDate","endDate","status")),
     Screen("Homework", "Homework", "homework", listOf("title","className","division","subject","date","details")),
     Screen("Results", "Results / निकाल", "results", listOf("studentId","exam","subject","maxMarks","obtainedMarks","academicYear")),
-    Screen("Library", "Library / ग्रंथालय", "library", listOf("bookId","name","author","copies","shelf")),
-    Screen("Sports", "Sports", "sports", listOf("name","sport","quantity","condition")),
+    Screen("Library", "Library / ग्रंथालय", "library", listOf("bookId","name","author","copies","shelf"),"book"),
+    Screen("Sports", "Sports", "sports", listOf("name","sport","quantity","condition"),"equipment"),
     Screen("Trips", "Educational trips", "trips", listOf("name","destination","startDate","returnDate","inCharge")),
     Screen("Communications", "Communication history", "communication_logs", listOf("studentId","channel","calledPerson","mobile","initiatedBy","date","time","outcome","remark")),
 )
 
 /** Live repository UI. Save succeeds only after the Firestore transaction acknowledges it. */
 @Composable
-fun SchoolWorkspace(modules: List<String>) {
+fun SchoolWorkspace(modules: List<String>, repository: SharedSchoolRepository? = null) {
     val context = LocalContext.current
-    val repo = remember { SharedSchoolRepository(FirebaseBackend(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance(), FirebaseStorage.getInstance()), BuildConfig.SCHOOL_TENANT_ID) }
+    val repo = remember(repository) { repository ?: SharedSchoolRepository(FirebaseBackend(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance(), FirebaseStorage.getInstance()), BuildConfig.SCHOOL_TENANT_ID) }
     val allowed = screens.filter { it.module in modules }
     var selected by remember { mutableStateOf(allowed.firstOrNull()) }
     LaunchedEffect(modules) { if (selected !in allowed) selected = allowed.firstOrNull() }
@@ -58,7 +59,7 @@ fun SchoolWorkspace(modules: List<String>) {
             if (live) {
                 ready = result.isSuccessful
                 if (!result.isSuccessful) message = result.exception?.message ?: "Membership verification failed."
-                else if (allowed.any { "studentId" in it.fields } || "Students" in modules) stop = repo.watch("students", { students = it }, { message = it.message ?: "Student access failed." })
+                else if (allowed.any { "studentId" in it.fields } || "Students" in modules || "Trips" in modules) stop = repo.watch("students", { students = it }, { message = it.message ?: "Student access failed." })
             }
         }
         onDispose { live = false; stop?.invoke() }
@@ -73,10 +74,24 @@ fun SchoolWorkspace(modules: List<String>) {
         val screen = selected ?: return
         var id = row?.get("id")?.toString() ?: UUID.randomUUID().toString()
         val values = if (deleted) data(row!!).entries.associate { it.key.toString() to it.value }.toMutableMap() else data(row ?: emptyMap()).entries.associate { it.key.toString() to it.value }.toMutableMap().apply { putAll(form ?: emptyMap()) }
+        selected?.kind?.let { values["kind"] = it }
         val linked = students.find { it["id"] == values["studentId"] }
         var classId = row?.get("class_id")?.toString() ?: ""
         if (!deleted) {
             if (screen.fields.any { it in listOf("name","title","studentId") && values[it]?.toString().isNullOrBlank() }) { message = "Complete the required name, title or student field."; return }
+            if (screen.collection == "teachers" && screen.kind == "teacher") {
+                if (values["subject"].toString().isBlank() || !Regex("[0-9]{10}").matches(values["mobile"].toString())) { message = "Teacher subject and a 10-digit mobile number required."; return }
+                val emailValue = values["email"].toString()
+                if (emailValue.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(emailValue).matches()) { message = "Enter a valid email address."; return }
+            }
+            if (screen.collection == "teachers" && screen.kind == "staff" && values["employeeId"].toString().isBlank()) { message = "Staff employee ID required."; return }
+            if (screen.collection in listOf("library","sports")) {
+                val field = if (screen.collection == "library") "copies" else "quantity"
+                val quantity = values[field].toString().toIntOrNull()
+                if (quantity == null || quantity <= 0) { message = "Enter a positive whole-number stock quantity."; return }
+                values[field] = quantity
+                if (screen.collection == "library" && values["bookId"].toString().isBlank()) { message = "Book ID required."; return }
+            }
             if (screen.collection == "students") {
                 if (!Regex("[A-Za-z0-9._-]{1,100}").matches(values["grNo"].toString()) || values["className"].toString().isBlank() || values["division"].toString().isBlank()) { message = "Valid GR, class and division required."; return }
                 val contacts = listOf("fatherMobile","motherMobile","emergencyContact").map { values[it]?.toString()?.trim() ?: "" }
@@ -106,6 +121,24 @@ fun SchoolWorkspace(modules: List<String>) {
                 if (maximum == null || obtained == null || !maximum.isFinite() || !obtained.isFinite() || maximum <= 0 || obtained < 0 || obtained > maximum) { message = "Marks must be between zero and the positive maximum."; return }
                 values["maxMarks"] = maximum; values["obtainedMarks"] = obtained
             }
+            if (screen.collection == "trips") {
+                val ids = (form?.get("participantIds") ?: "").split(",").filter { it.isNotBlank() }
+                if (ids.isEmpty() || ids.any { id -> students.none { it["id"] == id } }) { message = "Select at least one enrolled student."; return }
+                if (listOf("destination","startDate","inCharge").any { values[it].toString().isBlank() }) { message = "Destination, start date and in-charge required."; return }
+                val old = values["participants"] as? List<*> ?: emptyList<Any>()
+                values["participants"] = ids.map { id -> old.filterIsInstance<Map<*,*>>().find { it["studentId"] == id } ?: mapOf("studentId" to id,"consent" to "Pending","boarding" to "Not recorded") }
+                values.remove("participantIds")
+                if (values["status"] == null) values["status"] = "Planned"
+                if (values["updates"] == null) values["updates"] = emptyList<Any>()
+            }
+            if (screen.collection == "academic_years") {
+                val year = values["name"].toString()
+                if (!Regex("[0-9]{4}-[0-9]{2}").matches(year) || year.takeLast(2).toInt() != (year.take(4).toInt()+1)%100) { message = "Enter a consecutive academic year, for example 2026-27."; return }
+                if (row == null) id = year
+                if (id != year) { message = "The academic year identity cannot be renamed."; return }
+                values["id"] = id
+                if (values["status"].toString() !in listOf("Open","Closed","Archived")) { message = "Choose Open, Closed or Archived."; return }
+            }
             if (screen.collection == "fees") {
                 if (values["type"].toString().isBlank() || !Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}").matches(values["date"].toString())) { message = "Fee type and date required."; return }
                 val total = values["total"].toString().toDoubleOrNull(); val paid = values["paid"].toString().toDoubleOrNull()
@@ -133,6 +166,14 @@ fun SchoolWorkspace(modules: List<String>) {
         OutlinedTextField(search, { search = it }, label = { Text("Search records") }, modifier = Modifier.fillMaxWidth())
         Button(onClick = { editing = null; form = selected?.fields?.associateWith { if (it == "academicYear") "2026-27" else "" } }, enabled = ready && !busy && selected != null && selected?.collection != "communication_logs") { Text("Add record") }
         form?.let { current ->
+            if (selected?.collection == "trips") {
+                Text("Participating students")
+                val ids = current["participantIds"].orEmpty().split(",").filter { it.isNotBlank() }
+                students.forEach { student ->
+                    val id = student["id"].toString()
+                    Row { Checkbox(id in ids, { checked -> form = current + ("participantIds" to (if (checked) ids + id else ids - id).distinct().joinToString(",")) }); Text(data(student)["name"].toString()) }
+                }
+            }
             selected!!.fields.forEach { field ->
                 if (field == "status" && selected?.collection == "attendance") {
                     var chooseStatus by remember { mutableStateOf(false) }
@@ -150,10 +191,10 @@ fun SchoolWorkspace(modules: List<String>) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button(onClick = { commit(editing,false) }, enabled = !busy) { Text("Save") }; TextButton(onClick = { form = null; editing = null }, enabled = !busy) { Text("Cancel") } }
         }
-        rows.filter { data(it).values.joinToString(" ").contains(search,ignoreCase=true) }.forEach { row ->
+        rows.filter { selected?.kind == null || (data(it)["kind"] ?: when(selected?.collection) { "teachers" -> "teacher"; "library" -> "book"; "sports" -> "equipment"; "notifications" -> "notice"; else -> null }) == selected?.kind }.filter { data(it).values.joinToString(" ").contains(search,ignoreCase=true) }.forEach { row ->
             Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
                 selected?.fields?.forEach { key -> Text("$key: ${data(row)[key] ?: ""}") }
-                Row { TextButton(onClick = { editing = row; form = selected!!.fields.associateWith { data(row)[it]?.toString() ?: "" } }, enabled = !busy) { Text("Edit") }; TextButton(onClick = { deleting = row }, enabled = !busy) { Text("Archive") } }
+                Row { TextButton(onClick = { editing = row; form = selected!!.fields.associateWith { data(row)[it]?.toString() ?: "" } + ("participantIds" to ((data(row)["participants"] as? List<*>)?.filterIsInstance<Map<*,*>>()?.mapNotNull { it["studentId"]?.toString() }?.joinToString(",") ?: "")) }, enabled = !busy) { Text("Edit") }; TextButton(onClick = { deleting = row }, enabled = !busy) { Text("Archive") } }
                 val contact = if (selected?.collection == "students") row else students.find { it["id"] == data(row)["studentId"] }
                 if (contact != null && (selected?.collection == "students" || data(row)["status"] == "Absent")) {
                     listOf("Father" to "fatherMobile","Mother" to "motherMobile","Emergency" to "emergencyContact").forEach { (title,key) ->
@@ -163,7 +204,7 @@ fun SchoolWorkspace(modules: List<String>) {
                                 context.startActivity(Intent(Intent.ACTION_DIAL,Uri.parse("tel:$phone")))
                                 // Dialing never waits for a messaging API or the history write.
                                 val now = java.util.Date()
-                                val call = mapOf<String,Any?>("studentId" to contact["id"],"channel" to "Call","calledPerson" to title,"mobile" to phone,"initiatedBy" to FirebaseAuth.getInstance().currentUser?.uid,"date" to java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now),"time" to java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.ROOT).format(now),"outcome" to "Dialer opened","remark" to "Call connection and duration are not verified.")
+                                val call = mapOf<String,Any?>("studentId" to contact["id"],"channel" to "call","calledPerson" to title,"contactType" to title.lowercase(),"parentName" to (data(contact)[when(title) { "Father" -> "fatherName"; "Mother" -> "motherName"; else -> "emergencyName" }] ?: title),"parentMobile" to phone,"mobile" to phone,"attendanceDate" to (if (selected?.collection == "attendance") data(row)["date"] else java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now)),"initiatedAt" to java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",java.util.Locale.ROOT).format(now),"status" to "Dialer requested","initiatedBy" to FirebaseAuth.getInstance().currentUser?.uid,"date" to java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now),"time" to java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.ROOT).format(now),"outcome" to "Dialer opened","remark" to "Call connection and duration are not verified.")
                                 try {
                                     repo.mutate(SchoolMutation("communication_logs",UUID.randomUUID().toString(),contact["class_id"]?.toString() ?: "",0,call,false)).addOnCompleteListener { result -> message = if (result.isSuccessful) "Call attempt saved. Record the outcome in Communication history." else "Dialer opened, but call history was not saved. Check connection and permissions." }
                                 } catch (_: Exception) { message = "Dialer opened, but call history was not saved. Check connection and permissions." }

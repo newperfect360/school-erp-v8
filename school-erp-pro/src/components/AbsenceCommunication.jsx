@@ -1,3 +1,4 @@
+import {useSharedRecords} from '../backend/useSharedRecords';
 import {markedAbsent} from "../services/attendanceAutomationStore";
 import {useContext} from "react";
 import {CommunicationSession} from "../backend/CommunicationSession";
@@ -14,8 +15,11 @@ import "./AbsenceCommunication.css";
 export function useAbsenceCommunication(date, students, suppliedActor) {
   const session = useContext(CommunicationSession);
   const actor = suppliedActor || {id:session?.uid || "unverified",name:session?.email || "",role:session ? (["Admin","Super Admin"].includes(session.role)?"admin":"teacher") : "none"};
-  const [history, setHistory, reloadHistory] = useStoredState(communicationKeys.history, []);
-  const [followups, setFollowups, reloadFollowups] = useStoredState(communicationKeys.followups, {});
+  const [history, setHistory, historyConnection, reloadHistory] = useSharedRecords("communication_logs",communicationKeys.history);
+  const [localFollowups, saveLocalFollowups, reloadFollowups] = useStoredState(communicationKeys.followups, {});
+  const [sharedFollowups,saveSharedFollowups]=useSharedRecords("communication_logs","erp_pro_shared_followups",{kind:"followup"});
+  const followups=historyConnection.shared?Object.fromEntries(sharedFollowups.map(r=>[JSON.stringify([r.attendanceDate,String(r.studentId)]),{...r,status:r.followupStatus||r.status}])):localFollowups;
+  const setFollowups=async next=>{if(!historyConnection.shared)return saveLocalFollowups(next);const value=typeof next==="function"?next(followups):next;return saveSharedFollowups(Object.entries(value).map(([key,row])=>{const [date,studentId]=JSON.parse(key);return {...row,id:row.id||studentId+"_"+date+"_followup",studentId,attendanceDate:date,kind:"followup",channel:"followup",followupStatus:row.status};}));};
   useEffect(()=>{const reload=()=>{reloadHistory();reloadFollowups()};window.addEventListener('communication-history-changed',reload);return()=>window.removeEventListener('communication-history-changed',reload)},[reloadHistory,reloadFollowups]);
   const [settings, setSettings] = useStoredState(communicationKeys.settings, defaultAbsenceSettings);
   const [contacts, setContacts] = useState({});
@@ -39,7 +43,7 @@ export function useAbsenceCommunication(date, students, suppliedActor) {
     const list = parentContacts(s, s.primaryNotificationContact || settings.primaryContact);
     return list.find(c => c.id === contacts[s.id]) || list.find(c => c.mobile) || list[0];
   };
-  const eventsFor = s => history.filter(h => String(h.studentId) === String(s.id) && h.attendanceDate === date);
+  const eventsFor = s => history.filter(h => String(h.studentId) === String(s.id) && (h.attendanceDate||h.date) === date && h.channel!=="followup");
   const followupFor = s => followups[JSON.stringify([date, String(s.id)])] || { status: "Not Contacted", response: "" };
   const setFollowup = (s, value) => allowed && setFollowups(current => ({ ...current, [JSON.stringify([date, String(s.id)])]: { ...followupFor(s), ...value, updatedBy: actor.id, updatedAt: new Date().toISOString() } }));
 
@@ -126,7 +130,7 @@ export function useAbsenceCommunication(date, students, suppliedActor) {
 
   const panel = allowed && <section className="absence-panel" aria-label="Absent Student Follow-up">
     <h3>Absent Student Follow-up</h3>
-    <p>Contact actions are saved on this browser. Opening an app does not confirm delivery or a connected call.</p>
+    <p>Contact actions are saved to the active school data source. Opening an app does not confirm delivery or a connected call.</p>
     {actor.role === "admin" && <details className="absence-settings"><summary>Absence notification settings</summary>
       <label>Primary parent contact<select aria-label="Primary parent contact" value={settings.primaryContact || "father"} onChange={e=>setSettings({...settings,primaryContact:e.target.value})}>{["father","mother","emergency"].map(id=><option key={id} value={id}>{id}</option>)}</select></label><p>Automatic attendance messages are configured in Attendance Automation and prepared only after Final Submit. Calls remain available immediately.</p>
       <label><input type="checkbox" checked={false} disabled /> Automatic sending (provider not connected)</label>

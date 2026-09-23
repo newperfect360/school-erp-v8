@@ -28,9 +28,9 @@ export default function StudentChangeDialog({ student, action, role, onClose, on
       setPreview(previewMovements([student.id], { ...form, action: mapped })); setChecked(false); setError('');
     } catch (e) { setError(e.message); }
   };
-  const confirm = () => {
+  const confirm = async () => {
     if (!checked || !preview) return;
-    try { commitMovements(preview); notify('Student change saved. Linked records and previous enrollment retained.'); onSaved(); }
+    try { await commitMovements(preview); notify('Student change saved. Linked records and previous enrollment retained.'); onSaved(); }
     catch (e) { setError(e.message); }
   };
   return <dialog ref={dialog} className="student-change-dialog" onCancel={onClose} aria-labelledby="student-change-title">

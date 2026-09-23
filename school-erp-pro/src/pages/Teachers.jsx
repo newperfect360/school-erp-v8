@@ -1,12 +1,12 @@
 import { notify } from "../components/Feedback";
 import { useRef, useState } from "react";
-import { useStoredState } from "../storage";
+import {useSharedRecords} from "../backend/useSharedRecords";
 import {exportRows} from '../services/excel';
 
 export default function Teachers() {
   const [imageLoading, setImageLoading] = useState(false);
   const photoInput = useRef(null);
-  const [teachers, setTeachers] = useStoredState("erp_pro_teachers", []);
+  const [teachers, setTeachers, connection] = useSharedRecords("teachers","erp_pro_teachers");
   const [query,setQuery]=useState('');
   const [form, setForm] = useState({
     name: "",
@@ -34,7 +34,7 @@ export default function Teachers() {
     }
   };
 
-  const saveTeacher = () => {
+  const saveTeacher = async () => {
     if (imageLoading) { notify("फोटो तयार होत आहे. क्षणभर थांबा."); return; }
     if (!form.name.trim() || !form.mobile || !form.subject.trim()) {
       notify("शिक्षक नाव, मोबाईल आणि विषय भरा");
@@ -43,7 +43,7 @@ export default function Teachers() {
 
     if (!/^\d{10}$/.test(form.mobile)) { notify("मोबाईल नंबर 10 अंकांचा असावा"); return; }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { notify("Email चुकीचा आहे"); return; }
-    if (!setTeachers(form.id ? teachers.map(row=>row.id===form.id?{...row,...form}:row) : [...teachers, { ...form, id: crypto.randomUUID() }])) return;
+    if (!await setTeachers(form.id ? teachers.map(row=>row.id===form.id?{...row,...form}:row) : [...teachers, { ...form, id: crypto.randomUUID() }])) return;
 
     setForm({
       name: "",
@@ -81,13 +81,13 @@ export default function Teachers() {
       </div></section>
 
 
-      <button disabled={imageLoading} onClick={saveTeacher}>Save Teacher</button>
+      <button disabled={imageLoading||connection.busy} onClick={saveTeacher}>Save Teacher</button>
       {form.id && <button onClick={()=>setForm({name:'',designation:'',subject:'',mobile:'',email:'',address:'',photo:''})}>Cancel edit</button>}
       <label>Search teachers<input aria-label="Search teachers" value={query} onChange={e=>setQuery(e.target.value)}/></label>
       <button onClick={()=>exportRows(teachers.filter(row=>Object.values(row).join(' ').toLowerCase().includes(query.toLowerCase())).map(({photo:_photo,...row})=>row),'teachers.xlsx')}>Export Excel</button>
 
 
-      <h3 className="list-heading">जतन केलेल्या नोंदी <span>{teachers.length}</span></h3>{teachers.length === 0 && <div className="empty-state"><strong>अद्याप नोंदी नाहीत</strong><span>वरील form वापरून पहिली नोंद तयार करा.</span></div>}
+      <p role="status">{connection.status}</p><h3 className="list-heading">जतन केलेल्या नोंदी <span>{teachers.length}</span></h3>{teachers.length === 0 && <div className="empty-state"><strong>अद्याप नोंदी नाहीत</strong><span>वरील form वापरून पहिली नोंद तयार करा.</span></div>}
 
       <div className="table-scroll"><table>
         <thead>
@@ -113,7 +113,7 @@ export default function Teachers() {
               <td>{t.subject}</td>
               <td>{t.mobile}</td>
               <td>{t.email}</td>
-              <td><button onClick={()=>setForm({...t})}>Edit</button><button onClick={()=>{if(window.confirm(`Delete teacher ${t.name}? Related historical records will be retained.`)){if(setTeachers(teachers.filter(row=>row.id!==t.id)) && form.id===t.id)setForm({name:'',designation:'',subject:'',mobile:'',email:'',address:'',photo:''});}}}>Delete</button></td>
+              <td><button onClick={()=>setForm({...t})}>Edit</button><button onClick={async()=>{if(window.confirm(`Delete teacher ${t.name}? Related historical records will be retained.`)){if(await setTeachers(teachers.filter(row=>row.id!==t.id)) && form.id===t.id)setForm({name:'',designation:'',subject:'',mobile:'',email:'',address:'',photo:''});}}}>Delete</button></td>
             </tr>
           ))}
         </tbody>
