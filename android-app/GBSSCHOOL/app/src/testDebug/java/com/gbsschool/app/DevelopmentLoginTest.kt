@@ -18,7 +18,7 @@ class DevelopmentLoginTest {
     @Test fun submittedLocalCredentialsOpenDashboardWithoutFirebase() {
         // Deliberately no FirebaseApp initialization, network, or membership fixture.
         compose.setContent { SchoolTheme { SchoolApp() } }
-        compose.onNodeWithText("Username / Email").performTextInput("admin")
+        compose.onNodeWithText("Username / Email").performTextInput("dilippawar2207@gmail.com")
         compose.onNodeWithText("Password",substring=false).performTextInput("incorrect")
         compose.onNodeWithText("Sign in",substring=false).performScrollTo().performClick()
         compose.onNodeWithText("Invalid development username or password.").assertExists()

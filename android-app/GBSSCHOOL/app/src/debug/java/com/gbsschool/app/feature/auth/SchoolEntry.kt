@@ -37,7 +37,7 @@ fun SchoolEntry() {
             OutlinedTextField(password,{password=it},label={Text("Password")},singleLine=true,visualTransformation=if(show) VisualTransformation.None else PasswordVisualTransformation())
             TextButton(onClick={show=!show}) { Text(if(show) "Hide password" else "Show password") }
             Button(onClick={
-                if(username.trim()=="admin" && password=="admin1234") { signedIn=true; password="";error="" }
+                if(username.trim().lowercase() in listOf("admin","dilippawar2207@gmail.com") && password=="admin1234") { signedIn=true; password="";error="" }
                 else { error="Invalid development username or password.";password="" }
             }) { Text("Sign in") }
             if(error.isNotBlank()) Text(error)
