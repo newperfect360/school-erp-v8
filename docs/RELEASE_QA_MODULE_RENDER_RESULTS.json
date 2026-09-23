@@ -1,0 +1,221 @@
+{
+  "date": "2026-09-23T03:47:31.725Z",
+  "scope": "Isolated emulator login; page rendering is not full business-flow verification",
+  "routes": [
+    {
+      "module": "Dashboard",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "PortalInfo",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Staff",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Students",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "PhotoImport",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Lifecycle",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Reports",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Admissions",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "IDCard",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "AcademicYears",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Homework",
+      "rendered": true,
+      "notes": [
+        " Download important attachments for backup; cloud file sharing is not connected"
+      ]
+    },
+    {
+      "module": "Academics",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Timetable",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Classwork",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Results",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Formats",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "LongAbsence",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Attendance",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Checkout",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Communications",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Sports",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Trips",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Library",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Meetings",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Visits",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "EmergencyContacts",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Certificates",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "PortalContent",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Notices",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Calendar",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Fees",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Transport",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Inventory",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Automation",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Settings",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "Backup",
+      "rendered": true,
+      "notes": [
+        " No reset is enabled: verified Admin authentication and the shared backend are not connected"
+      ]
+    },
+    {
+      "module": "Teachers",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "TeacherDashboard",
+      "rendered": true,
+      "notes": []
+    },
+    {
+      "module": "AccessSetup",
+      "rendered": true,
+      "notes": [
+        "NEEDS API — identity and server permissions are not connected"
+      ]
+    },
+    {
+      "module": "Scholarships",
+      "rendered": true,
+      "notes": [
+        " Reminders here are local; automatic messaging is not connected"
+      ]
+    }
+  ],
+  "checks": [
+    "Student add/edit/archive/restore",
+    "Excel template download",
+    "xlsx/xls/csv imports",
+    "Mobile module rendering"
+  ],
+  "pageErrors": []
+}

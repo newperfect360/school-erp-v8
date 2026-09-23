@@ -1,6 +1,24 @@
 # Production authentication preparation — 20 September 2026
 
+## 23 September safety activation update
+
+See [SAFE_PRODUCTION_ACTIVATION.md](SAFE_PRODUCTION_ACTIVATION.md) for the latest read-only inventory, private backup, migration blockers and manual information needed. Existing administrator UID reverified; 13 legacy documents preserved and backed up. Complete current emulator suite: 12 PASS, 0 FAIL. Tenant ID is pending the owner's response. No production membership, rules or passwords changed. Live Web/Android login and synchronization remain unverified; this is not production activation.
+
 ## Live configuration check — 21 September 2026
+
+### Latest deployment safety preflight
+
+STOP before deployment: the existing enabled Email/Password account resolves to UID `F2k0InkD73eV9bDjXRNzl1Bw34j1`. Production has root collections `students`, `teachers`, `attendance`, and `notices`, but no `schools` membership documents. The prepared school-scoped rules explicitly deny the legacy root paths. Deploying them unchanged would break legacy access. No production role record was created under the current unrestricted rules because any authenticated user could modify it.
+
+Fresh rollback backup: ignored local file `school-erp-pro/backend/production-rules-preflight-backup.local`, including current release metadata and complete rule source. Current ruleset: `projects/school-managment-8c102/rulesets/9031e5b4-4e58-4781-9098-4ce5848e18ab`. Current live rules still allow all authenticated reads/writes; this security issue remains unresolved, not approved for production use.
+
+Six targeted emulator tests PASS: Firebase browser authentication/recovery/change/logout/timeout; canonical SUPER_ADMIN; student read/add/edit and audited soft deletion; attendance; teacher records; settings; certificate/result records; membership permission updates; Teacher/Office Staff denial of protected writes and Super Admin modification. Physical deletion is intentionally denied. Certificate/result record access does not prove full template/report application workflows. No production password was used, changed or recorded. The expanded test is `school-erp-pro/backend/tests/shared-data.test.mjs`.
+
+The broader isolated browser audit also passed after correcting its obsolete menu list: actual portal navigation, Student add/edit/archive/restore, Excel template download, xlsx/xls/csv imports and mobile page rendering. Results: `docs/RELEASE_QA_MODULE_RENDER_RESULTS.json`. Android compilation/lint passed; real Android login and operational data synchronization remain unverified.
+
+Manual Console inspection (no Publish or record edits yet): open Firebase Console, select `school-managment-8c102`, then Authentication > Users, find the supplied administrator email and verify the UID above. Open Firestore Database > Data and confirm which existing school records belong to this school. Open Firestore Database > Rules to inspect the currently published rules. Do not create a duplicate user or change the password. A school tenant identifier and an access-preserving legacy migration/compatibility plan are required before protected membership provisioning and rollout; Console account creation alone cannot solve that code/data-path mismatch.
+
+Production status: UID identified PASS; UID membership configured FAIL; SUPER_ADMIN role provisioned FAIL; isolated emulator security tests PASS (scope above); rules deployed FAIL (withheld); real Web login FAIL (unverified); real Android login FAIL (unverified); legacy access affected NO because nothing was deployed (would be affected by the current candidate). No school records were changed or deleted.
 
 ### First Super Admin setup: awaiting production rules approval
 
@@ -19,7 +37,7 @@ Current real-account results: Web login NOT TESTED; Android login NOT TESTED; Su
 - Added `school-erp-v8.vercel.app` to authorized domains, preserving all existing domains, and verified the update.
 - Registered the existing Android package `com.gbsschool.app` in this same project. Android app ID: `1:288441699527:android:4a808addb16fb6060b82e2`.
 - Downloaded the official Android client config to ignored `android-app/GBSSCHOOL/app/google-services.json` and existing web client config to ignored `school-erp-pro/.firebase-web-config.local`. These contain public client configuration, not administrator credentials. They do not by themselves activate runtime environment variables, membership or shared operational data.
-- Still waiting for the user-designated Super Admin EMAIL or UID. The CLI operator's email is not assumed to be the school administrator. No Auth account, password or membership was created/changed, and no reset email was sent.
+- The user-designated Super Admin email has now been resolved to the existing UID above. No Auth account, password or membership was created/changed, and no reset email was sent.
 - Web runtime environment, school tenant membership, deployed rules, Vercel deployment and configured APK still need completion and real verification. The sign-in configuration warning remains intentionally in place.
 - Same-project registration is verified; real web/Android login and shared-data synchronization are NOT verified. Operational modules still need shared-repository integration as described below.
 

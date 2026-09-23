@@ -1,4 +1,5 @@
 import {navigationItems} from '../../src/design/navigation.js';
+import {portalGroups} from '../../src/design/portalNavigation.js';
 import * as XLSX from '../../node_modules/xlsx/xlsx.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +18,7 @@ test('release QA: authenticated module navigation, student CRUD and Excel import
   const response = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=emulator-only', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, returnSecureToken: true }) });
   const account = await response.json(); assert.ok(account.localId, 'Emulator account created');
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'schools/auth-school/members', account.localId), {
-    active: true, passwordSetupComplete: true, role: 'Super Admin', modules: [...navigationItems.map(item=>item[0]),'AcademicYears','Lifecycle','PhotoImport','LongAbsence','EmergencyContacts','Checkout'], resources: [], classIds: [], studentIds: [],
+    active: true, passwordSetupComplete: true, role: 'SUPER_ADMIN', modules: [...new Set([...navigationItems.map(item=>item[0]),...portalGroups.flatMap(group=>group.items.map(item=>item.page))])], resources: [], classIds: [], studentIds: [],
   }));
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'schools/auth-school/members/staff-member'), {
     active: true, passwordSetupComplete: true, role: 'Teacher', modules: [], resources: [], classIds: [], studentIds: [],
@@ -44,7 +45,7 @@ test('release QA: authenticated module navigation, student CRUD and Excel import
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     const {nav}=await import('../../tests/portal-navigation.mjs');
     const routes=[];
-    for(const [key] of navigationItems){
+    for(const key of ['Dashboard',...new Set(portalGroups.flatMap(group=>group.items.map(item=>item.page)))]){
       await nav(page,key);
       await page.waitForTimeout(100);
       const text=await page.locator('main').innerText();
