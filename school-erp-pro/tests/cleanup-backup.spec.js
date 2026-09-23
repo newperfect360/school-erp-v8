@@ -5,7 +5,7 @@ test('backup page downloads a dated file and verifies the saved copy', async ({ 
   await page.goto('/');
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await page.getByLabel('Username', { exact: true }).fill('admin');
-  await page.getByLabel('Password', { exact: true }).fill('123456');
+  await page.getByLabel('Password', { exact: true }).fill('admin1234');
   await page.getByRole('button', { name: 'Login', exact: true }).click();
   await nav(page, 'Backup');
   const pending = page.waitForEvent('download');

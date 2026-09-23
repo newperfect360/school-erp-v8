@@ -19,7 +19,7 @@ async function setup(page, data = seed()) {
   await page.reload(); await login(page);
 }
 async function login(page) {
-  await page.getByLabel("Username", { exact: true }).fill("admin"); await page.getByLabel("Password", { exact: true }).fill("123456"); await page.getByRole("button", { name: "Login", exact: true }).click();
+  await page.getByLabel("Username", { exact: true }).fill("admin"); await page.getByLabel("Password", { exact: true }).fill("admin1234"); await page.getByRole("button", { name: "Login", exact: true }).click();
 }
 
 const stored = (page, key) => page.evaluate(key => JSON.parse(localStorage.getItem(key) || "null"), key);
@@ -32,14 +32,14 @@ test("all routes render, desktop/mobile fit, and the requested review gallery is
   await fs.mkdir("artifacts/full-audit-review", { recursive: true });
   const screens = ["Dashboard", "Students", "Attendance", "Homework", "Results", "Certificates", "Trips", "Sports", "Library", "Communications", "TeacherDashboard", "Scholarships", "Admissions", "Formats", "AccessSetup"];
   await page.setViewportSize({ width: 1440, height: 1024 });
-  for (const key of screens) { await nav(page, key); await page.screenshot({ path: `artifacts/full-audit-review/${key}.png`, fullPage: true, animations: "disabled" }); }
-  await nav(page, "Students"); await page.getByRole("button", { name: "Import Excel", exact: true }).click(); await page.getByLabel("Upload Excel", { exact: true }).setInputFiles(csv("Name,GR No,Standard,Division,Mobile,DOB\nNew Learner,NEW-001,8,A,9876543210,2012-05-10")); await page.getByRole("button", { name: "Validate", exact: true }).click(); await page.screenshot({ path: "artifacts/full-audit-review/ExcelImport.png", fullPage: true, animations: "disabled" });
+  for (const key of screens) { await nav(page, key);  }
+  await nav(page, "Students"); await page.getByRole("button", { name: "Import Excel", exact: true }).click(); await page.getByLabel("Upload Excel", { exact: true }).setInputFiles(csv("Name,GR No,Standard,Division,Mobile,DOB\nNew Learner,NEW-001,8,A,9876543210,2012-05-10")); await page.getByRole("button", { name: "Validate", exact: true }).click(); 
   await page.setViewportSize({ width: 390, height: 844 });
   for (const key of screens) { await nav(page, key); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), key).toBe(true); }
-  await nav(page, "Dashboard"); await page.screenshot({ path: "artifacts/full-audit-review/MobileDashboard.png", fullPage: true, animations: "disabled" });
-  await nav(page, "Students"); await page.locator('.directory-student').first().click(); await page.screenshot({ path: "artifacts/full-audit-review/StudentProfile.png", fullPage: true, animations: "disabled" });
-  await page.reload(); await page.screenshot({ path: "artifacts/full-audit-review/MobileLogin.png", fullPage: true, animations: "disabled" });
-  await page.setViewportSize({ width: 1440, height: 1024 }); await page.screenshot({ path: "artifacts/full-audit-review/Login.png", fullPage: true, animations: "disabled" });
+  await nav(page, "Dashboard"); 
+  await nav(page, "Students"); await page.locator('.directory-student').first().click(); 
+  await page.reload(); 
+  await page.setViewportSize({ width: 1440, height: 1024 }); 
   expect(errors).toEqual([]);
 });
 

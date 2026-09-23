@@ -26,7 +26,7 @@ export function dailyEvents({students,attendance,loans=[],fees=[],meetings=[],da
  for(const s of students){const status=attendance[s.id];if(['Present','Absent','Late'].includes(status)&&settings.enabled?.[status])events.push({type:status,studentId:s.id,key:`attendance:${date}:${s.id}:${status}`,details:{Date:date}})}
  if(settings.enabled?.['School Closed']&&time>=settings.closingTime){for(const s of students)if(attendance[s.id]==='Present')events.push({type:'School Closed',studentId:s.id,key:`closing:${date}:${s.id}`,details:{Date:date}})}
  if(settings.enabled?.['Library Due'])for(const l of loans)if(!l.returned&&l.dueDate&&l.dueDate<date)events.push({type:'Library Due',studentId:l.studentId,key:`library-due:${date}:${l.id}`,details:{Book:l.bookName||l.bookId,'Due Date':l.dueDate}});
- if(settings.enabled?.['Fee Reminder'])for(const f of fees)if(Number(f.total)>Number(f.paid))events.push({type:'Fee Reminder',studentId:f.studentId,key:`fee-due:${date}:${f.id}`,details:{Amount:(Number(f.total)-Number(f.paid)).toFixed(2)}});
+ if(settings.enabled?.['Fee Reminder'])for(const f of fees)if(!f.voidedAt&&Number(f.total)>Number(f.paid))events.push({type:'Fee Reminder',studentId:f.studentId,key:`fee-due:${date}:${f.id}`,details:{Amount:(Number(f.total)-Number(f.paid)).toFixed(2)}});
  if(settings.enabled?.['Parent Meeting'])for(const m of meetings)if(m.date===date&&m.time>time&&['Scheduled','Rescheduled'].includes(m.attendance))events.push({type:'Parent Meeting',studentId:m.studentId,key:`meeting:${date}:${m.id}`,details:{Date:m.date,Time:m.time,Details:m.purpose}});
  return events;
 }

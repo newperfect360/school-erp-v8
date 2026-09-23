@@ -1,3 +1,4 @@
+import ClassDivisionSettings from "../components/ClassDivisionSettings";
 import { notify } from "../components/Feedback";
 import { useState } from "react";
 import { readStored, writeStored } from "../storage";
@@ -59,7 +60,7 @@ export default function Settings({ onSaved, onNavigate }) {
 
       <br />
       <button disabled={imageLoading} onClick={save}>Save Settings</button>
-      <button onClick={testWhatsApp}>Test WhatsApp</button>
+      <button onClick={testWhatsApp}>Test WhatsApp</button><ClassDivisionSettings rows={settings.classDivisions||[]} onSave={rows=>{const next={...settings,classDivisions:rows};if(!writeStored("schoolSettings",next))return false;setSettings(next);onSaved?.(next);return true;}}/>
     </div>
   );
 }

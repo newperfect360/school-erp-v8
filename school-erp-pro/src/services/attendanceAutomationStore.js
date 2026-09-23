@@ -58,7 +58,7 @@ export function prepareAutomationDue(now = new Date(), actor = 'scheduler-previe
     if (!schedule.closed && stats.consecutive >= Number(config.consecutiveDays)) events.push({type:'Consecutive Absence Alert',studentId:student.id,key:`consecutive:${date}:${student.id}`,fields:{date,days:stats.consecutive}});
     if (stats.marked >= Number(config.minimumMarkedDays) && stats.percentage < Number(config.lowAttendancePercent)) events.push({type:'Attendance Percentage Warning',studentId:student.id,key:`low-attendance:${date}:${student.id}`,fields:{date,percentage:stats.percentage}});
   }
-  for (const fee of readStored('erp_pro_fee_ledger',[])) if (Number(fee.total)>Number(fee.paid)) events.push({type:'Fee Due',studentId:fee.studentId,key:`fee-due:${date}:${fee.id}`,fields:{date,fee_type:fee.type,amount:(Number(fee.total)-Number(fee.paid)).toFixed(2)}});
+  for (const fee of readStored('erp_pro_fee_ledger',[])) if (!fee.voidedAt && Number(fee.total)>Number(fee.paid)) events.push({type:'Fee Due',studentId:fee.studentId,key:`fee-due:${date}:${fee.id}`,fields:{date,fee_type:fee.type,amount:(Number(fee.total)-Number(fee.paid)).toFixed(2)}});
   const staff = readStored('erp_pro_staff_attendance',{})[date];
   if (!schedule.closed && time >= config.staffSummaryTime && staff) {
     const count = status => staff.rows.filter(row=>row.status===status).length;

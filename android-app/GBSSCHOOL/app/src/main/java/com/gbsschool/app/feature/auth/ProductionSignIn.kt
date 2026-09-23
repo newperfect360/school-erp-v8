@@ -18,6 +18,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.MetadataChanges
 import kotlinx.coroutines.delay
+import com.gbsschool.app.feature.operations.SchoolWorkspace
 
 /** Uses the same Firebase Auth users and schools/{school}/members/{uid} as web. */
 @Composable
@@ -86,7 +87,7 @@ fun ProductionSignIn() {
             } else {
                 Text("Role: $role")
                 Text("Assigned modules: ${modules.joinToString()}")
-                Text("School data screens still require shared-data integration before production use.")
+                SchoolWorkspace(modules)
                 OutlinedTextField(password, { password = it }, label = { Text("Current password") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation())
                 OutlinedTextField(nextPassword, { nextPassword = it }, label = { Text("New password (12+ characters)") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation())
                 Button(enabled = !busy && password.isNotBlank() && nextPassword.length in 12..128 && password != nextPassword, onClick = {

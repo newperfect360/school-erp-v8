@@ -6,12 +6,13 @@ import {parentContacts} from './absenceCommunication';
 import {defaultWorkflow,renderMessage,selectFallback} from './messageWorkflow';
 export const workflowKey='erp_pro_message_settings',jobsKey='erp_pro_message_jobs';
 export function preparedJobIssue(job){
+ if(job.invalidatedAt)return "Record changed after preparation. Prepare a new message.";
  if(job.dryRun)return 'Dry-run preview only. No device or provider dispatch is permitted.';
  const student=readStored('erp_pro_students',[]).find(s=>String(s.id)===String(job.studentId)&&lifecycleActive(s));if(!student)return 'Student is missing or archived. Reopen Student Master.';
  if(['Present','Absent','Late'].includes(job.type)&&readStored('erp_pro_attendance',{})[job.details?.Date]?.[job.studentId]!==job.type)return 'Attendance changed after preparation. Prepare a new message from the register.';
  if(job.type==='School Closed'&&readStored('erp_pro_attendance',{})[job.details?.Date]?.[job.studentId]!=='Present')return 'Present attendance no longer matches this closing draft.';
  if(job.type==='Library Due'){const id=job.key.split(':').slice(2).join(':'),loan=readStored('erp_pro_library_loans',[]).find(l=>String(l.id)===id);if(!loan||loan.returned||loan.dueDate!==job.details?.['Due Date'])return 'Library loan changed or was returned. Review the current loan.';}
- if(job.type==='Fee Reminder'){const id=job.key.split(':').slice(2).join(':'),fee=readStored('erp_pro_fee_ledger',[]).find(f=>String(f.id)===id);if(!fee||Number(fee.total)-Number(fee.paid)!==Number(job.details?.Amount))return 'Outstanding fee changed. Prepare a new message from Fees.';}
+ if(job.type==='Fee Reminder'){const id=job.key.split(':').slice(2).join(':'),fee=readStored('erp_pro_fee_ledger',[]).find(f=>String(f.id)===id);if(!fee||fee.voidedAt||Number(fee.total)-Number(fee.paid)!==Number(job.details?.Amount))return 'Outstanding fee changed. Prepare a new message from Fees.';}
  return '';
 }
 export function queueMessages(events,{force=false}={}){

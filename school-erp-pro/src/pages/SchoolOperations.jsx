@@ -1,3 +1,4 @@
+import {exportRows} from '../services/excel';
 import StaffAttendance from '../components/StaffAttendance';
 import { notify } from "../components/Feedback";
 import { useMemo, useState } from "react";
@@ -59,8 +60,8 @@ function SchoolRecordPanel({ module }) {
 
   const save = () => {
     if (definition.fields.slice(0, 2).some((field) => !form[field]?.trim())) { notify("पहिली आवश्यक माहिती भरा"); return; }
-    const item = { id: crypto.randomUUID(), ...form, createdAt: new Date().toISOString() };
-    if (!setItems([...items, item])) return;
+    const item = { ...form, id: form.id || crypto.randomUUID(), createdAt: form.createdAt || new Date().toISOString() };
+    if (!setItems(form.id ? items.map(row=>row.id===form.id?item:row) : [...items, item])) return;
     recordAudit(`${definition.title} नोंद तयार`, { id: item.id });
     setForm(Object.fromEntries(definition.fields.map((field) => [field, ""])));
   };
@@ -71,7 +72,7 @@ function SchoolRecordPanel({ module }) {
     <div className="module-heading"><div><span className="eyebrow">{definition.eyebrow}</span><h2>{definition.title}</h2><p>शाळेच्या दैनंदिन कामकाजासाठी सुरक्षित, शोधता येणारी नोंदवही.</p></div><div className="module-count">{items.length}<span>एकूण नोंदी</span></div></div>
     <section className="workflow-panel"><div className="panel-title"><h3>नवीन नोंद</h3><span>डेटा migration किंवा delete होत नाही</span></div><div className="form-grid">{definition.fields.map((field) => <input key={field} aria-label={field} placeholder={field} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />)}</div><button onClick={save}>नोंद जतन करा</button>{module === "Admissions" && <button className="button-muted" onClick={backup}>Backup डाउनलोड</button>}</section>
     <input className="module-search" aria-label="नोंदी शोधा" placeholder={`${definition.title} मध्ये शोधा`} value={query} onChange={(event) => setQuery(event.target.value)} />
-    <div className="record-grid">{visibleItems.map((item) => <article className="record-card text-record" key={item.id}><div className="record-card-body"><span className="record-kicker">{item.createdAt?.slice(0, 10)}</span><h3>{Object.values(item).filter((value) => value && typeof value === "string").slice(0, 2).join(" · ")}</h3><p>{Object.entries(item).filter(([key]) => key !== "id" && key !== "createdAt").map(([key, value]) => `${key}: ${value}`).join(" · ")}</p></div></article>)}</div>
+    <button onClick={()=>exportRows(visibleItems,`${module}.xlsx`)}>Export Excel</button><div className="record-grid">{visibleItems.map((item) => <article className="record-card text-record" key={item.id}><div className="record-card-body"><span className="record-kicker">{item.createdAt?.slice(0, 10)}</span><h3>{Object.values(item).filter((value) => value && typeof value === "string").slice(0, 2).join(" · ")}</h3><p>{Object.entries(item).filter(([key]) => key !== "id" && key !== "createdAt").map(([key, value]) => `${key}: ${value}`).join(" · ")}</p><button onClick={()=>setForm({...item})}>Edit</button><button onClick={()=>{if(window.confirm("Delete this record?")){if(setItems(items.filter(row=>row.id!==item.id)) && form.id===item.id)setForm(Object.fromEntries(definition.fields.map(field=>[field,""])));}}}>Delete</button></div></article>)}</div>
     {visibleItems.length === 0 && <div className="empty-state"><strong>अद्याप नोंदी नाहीत</strong><span>वरील formमधून पहिली नोंद तयार करा.</span></div>}
   </div>;
 }

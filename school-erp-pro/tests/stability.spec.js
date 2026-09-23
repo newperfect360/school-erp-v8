@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 import { coreDesignFixture } from "./fixtures/core-design.mjs";
 import fs from "node:fs/promises";
 
-async function login(page) { await page.getByLabel("Username", { exact: true }).fill("admin"); await page.getByLabel("Password", { exact: true }).fill("123456"); await page.getByRole("button", { name: "Login", exact: true }).click(); }
+async function login(page) { await page.getByLabel("Username", { exact: true }).fill("admin"); await page.getByLabel("Password", { exact: true }).fill("admin1234"); await page.getByRole("button", { name: "Login", exact: true }).click(); }
 async function setup(page) { await page.goto("/"); await page.evaluate(data => { localStorage.clear(); for (const [key, value] of Object.entries(data)) localStorage.setItem(key, JSON.stringify(value)); }, coreDesignFixture()); await page.reload(); await login(page); }
 const read = (page, key) => page.evaluate(key => JSON.parse(localStorage.getItem(key)), key);
 
@@ -55,7 +55,7 @@ test("backup previews before non-destructive merge; account requests never store
 test("remaining office registers save, search and export without cross-module state", async ({ page }) => {
   await setup(page);
   for (const key of ["Inventory", "Timetable", "Calendar", "Staff", "Notices", "Transport"]) {
-    await nav(page, key); const fields = page.locator(".workflow-panel .form-grid input"); await fields.nth(0).fill(`Audit ${key}`); await fields.nth(1).fill("Review record"); if (key === "Fees") { await fields.nth(2).fill("100"); await fields.nth(3).fill("50"); }
+    await nav(page, key); const fields = key === "Staff" ? page.locator(".workflow-panel").filter({has:page.getByLabel("Employee ID",{exact:true})}).locator(".form-grid input") : page.locator(".workflow-panel .form-grid input"); await fields.nth(0).fill(`Audit ${key}`); await fields.nth(1).fill("Review record"); if (key === "Fees") { await fields.nth(2).fill("100"); await fields.nth(3).fill("50"); }
     await page.getByRole("button", { name: "नोंद जतन करा", exact: true }).click(); await page.getByLabel("नोंदी शोधा", { exact: true }).fill(`Audit ${key}`); await expect(page.locator(".record-card")).toHaveCount(1);
   }
 });
