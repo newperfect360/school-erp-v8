@@ -17,7 +17,7 @@ data class SchoolMutation(
     val mutationId: String = UUID.randomUUID().toString(),
 )
 
-class SharedSchoolRepository(private val backend: FirebaseBackend, val schoolId: String) {
+class SharedSchoolRepository(private val backend: FirebaseBackend, val schoolId: String) : SchoolRepository {
     companion object {
         val collections = setOf("students", "parents", "teachers", "attendance", "academic_years", "homework", "exams", "results", "fees", "library", "sports", "scholarships", "trips", "certificates", "notifications", "communication_logs", "settings")
     }
@@ -28,7 +28,7 @@ class SharedSchoolRepository(private val backend: FirebaseBackend, val schoolId:
     private fun uid() = requireNotNull(backend.auth.currentUser?.uid) { "Sign in to your school account." }
     private fun record(collection: String, id: String) = backend.firestore.document("$root/$collection/$id")
 
-    fun loadMembership(): Task<Map<String, Any?>> {
+    override fun loadMembership(): Task<Map<String, Any?>> {
         val user = uid()
         return record("members", user).get().continueWith { task ->
             val data = requireNotNull(task.result.data) { "No school membership." }
@@ -40,7 +40,7 @@ class SharedSchoolRepository(private val backend: FirebaseBackend, val schoolId:
     }
 
     /** Rules enforce both module permission and scope; errors must stay visible in the UI. */
-    fun watch(collection: String, onRows: (List<Map<String, Any>>) -> Unit, onError: (Exception) -> Unit): () -> Unit {
+    override fun watch(collection: String, onRows: (List<Map<String, Any>>) -> Unit, onError: (Exception) -> Unit): () -> Unit {
         require(collection in collections)
         check(verifiedUid == uid()) { "Refresh school membership." }
         val member = requireNotNull(membership)
@@ -68,7 +68,7 @@ class SharedSchoolRepository(private val backend: FirebaseBackend, val schoolId:
     }
 
     /** Online transaction only. Offline callers must retain the original expectedVersion. */
-    fun mutate(change: SchoolMutation): Task<Void> {
+    override fun mutate(change: SchoolMutation): Task<Void> {
         require(change.collection in collections && change.id.isNotBlank() && !change.id.contains('/'))
         require(change.expectedVersion >= 0)
         val user = uid()

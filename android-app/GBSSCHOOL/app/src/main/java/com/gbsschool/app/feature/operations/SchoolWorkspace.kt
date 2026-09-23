@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.gbsschool.app.BuildConfig
 import com.gbsschool.app.data.firebase.FirebaseBackend
 import com.gbsschool.app.data.firebase.SharedSchoolRepository
+import com.gbsschool.app.data.firebase.SchoolRepository
 import com.gbsschool.app.data.firebase.SchoolMutation
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,7 +37,7 @@ private val screens = listOf(
 
 /** Live repository UI. Save succeeds only after the Firestore transaction acknowledges it. */
 @Composable
-fun SchoolWorkspace(modules: List<String>, repository: SharedSchoolRepository? = null) {
+fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null, sessionActorUid: String? = null) {
     val context = LocalContext.current
     val repo = remember(repository) { repository ?: SharedSchoolRepository(FirebaseBackend(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance(), FirebaseStorage.getInstance()), BuildConfig.SCHOOL_TENANT_ID) }
     val allowed = screens.filter { it.module in modules }
@@ -204,7 +205,7 @@ fun SchoolWorkspace(modules: List<String>, repository: SharedSchoolRepository? =
                                 context.startActivity(Intent(Intent.ACTION_DIAL,Uri.parse("tel:$phone")))
                                 // Dialing never waits for a messaging API or the history write.
                                 val now = java.util.Date()
-                                val call = mapOf<String,Any?>("studentId" to contact["id"],"channel" to "call","calledPerson" to title,"contactType" to title.lowercase(),"parentName" to (data(contact)[when(title) { "Father" -> "fatherName"; "Mother" -> "motherName"; else -> "emergencyName" }] ?: title),"parentMobile" to phone,"mobile" to phone,"attendanceDate" to (if (selected?.collection == "attendance") data(row)["date"] else java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now)),"initiatedAt" to java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",java.util.Locale.ROOT).format(now),"status" to "Dialer requested","initiatedBy" to FirebaseAuth.getInstance().currentUser?.uid,"date" to java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now),"time" to java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.ROOT).format(now),"outcome" to "Dialer opened","remark" to "Call connection and duration are not verified.")
+                                val call = mapOf<String,Any?>("studentId" to contact["id"],"channel" to "call","calledPerson" to title,"contactType" to title.lowercase(),"parentName" to (data(contact)[when(title) { "Father" -> "fatherName"; "Mother" -> "motherName"; else -> "emergencyName" }] ?: title),"parentMobile" to phone,"mobile" to phone,"attendanceDate" to (if (selected?.collection == "attendance") data(row)["date"] else java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now)),"initiatedAt" to java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",java.util.Locale.ROOT).format(now),"status" to "Dialer requested","initiatedBy" to (sessionActorUid ?: FirebaseAuth.getInstance().currentUser?.uid),"date" to java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(now),"time" to java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.ROOT).format(now),"outcome" to "Dialer opened","remark" to "Call connection and duration are not verified.")
                                 try {
                                     repo.mutate(SchoolMutation("communication_logs",UUID.randomUUID().toString(),contact["class_id"]?.toString() ?: "",0,call,false)).addOnCompleteListener { result -> message = if (result.isSuccessful) "Call attempt saved. Record the outcome in Communication history." else "Dialer opened, but call history was not saved. Check connection and permissions." }
                                 } catch (_: Exception) { message = "Dialer opened, but call history was not saved. Check connection and permissions." }

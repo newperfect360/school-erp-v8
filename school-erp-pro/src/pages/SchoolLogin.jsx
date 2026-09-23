@@ -35,7 +35,7 @@ export default function SchoolLogin({ settings, status }) {
     </aside>
     <main className="academic-login-main"><div className="login-topline"><span>{t("School management portal", "शालेय व्यवस्थापन पोर्टल")}</span><LanguageSwitch /></div>
       <form className="academic-login-form" onSubmit={submit}>
-        <h2>{mode === 'forgot' ? 'Forgot Password' : mode === 'reset' ? 'Reset Password' : t('Welcome back.', 'Welcome back.')}</h2>
+        <h2>{developmentEnabled ? 'Development Admin Login' : mode === 'forgot' ? 'Forgot Password' : mode === 'reset' ? 'Reset Password' : t('Welcome back.', 'Welcome back.')}</h2>
         <p>{developmentEnabled ? 'DEVELOPMENT / TEST MODE — local test records only.' : 'Sign in with your authorized school email account.'}</p>
         {mode !== 'reset' && <label>{developmentEnabled ? 'Username' : 'Email'}<input name="email" aria-label={developmentEnabled ? 'Username' : 'Email'} type={developmentEnabled ? 'text' : 'email'} autoComplete="username" required /></label>}
         {mode !== 'forgot' && <label>{mode === 'reset' ? 'New password' : 'Password'}<div className="input-with-icon"><input name="password" aria-label="Password" autoComplete={mode === 'reset' ? 'new-password' : 'current-password'} type={visible ? 'text' : 'password'} minLength={mode === 'reset' ? 12 : undefined} required /><button type="button" aria-label={visible ? 'Hide password' : 'Show password'} onClick={()=>setVisible(!visible)}>{visible ? 'Hide' : 'Show'}</button></div></label>}

@@ -27,7 +27,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "DEV_ADMIN_LOGIN", "true")
+        }
         release {
+            buildConfigField("boolean", "DEV_ADMIN_LOGIN", "false")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
