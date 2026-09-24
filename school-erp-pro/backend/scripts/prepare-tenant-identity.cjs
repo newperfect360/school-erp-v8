@@ -1,0 +1,26 @@
+const fs=require('node:fs');
+const {getGlobalDefaultAccount}=require('firebase-tools/lib/auth');
+const {requireAuth}=require('firebase-tools/lib/requireAuth');
+const {Client}=require('firebase-tools/lib/apiv2');
+(async()=>{
+ const project='school-managment-8c102';await requireAuth({...getGlobalDefaultAccount(),project});
+ const db=new Client({urlPrefix:'https://firestore.googleapis.com',apiVersion:'v1'});
+ const auth=new Client({urlPrefix:'https://identitytoolkit.googleapis.com',apiVersion:'v1'});
+ const users=(await auth.post(`projects/${project}/accounts:lookup`,{email:['dilippawar2207@gmail.com']})).body.users||[];
+ if(users.length!==1||users[0].disabled||users[0].localId!=='F2k0InkD73eV9bDjXRNzl1Bw34j1')throw Error('Admin verification failed.');
+ const name=`projects/${project}/databases/(default)/documents/schools/gbs-school`;
+ const original=(await db.get(name)).body;
+ if(original.fields.udise?.stringValue!=='27190113523'||original.fields.status?.stringValue!=='ACTIVE')throw Error('School mapping mismatch.');
+ const member=(await db.get(name+'/members/'+users[0].localId)).body;
+ if(member.fields.active?.booleanValue!==true||member.fields.role?.stringValue!=='SUPER_ADMIN')throw Error('Existing membership mismatch.');
+ const identity=JSON.parse(fs.readFileSync('../../assets/school-identity.json','utf8'));
+ const candidates={schoolName:identity.schoolNameMr,schoolNameMr:identity.schoolNameMr,schoolNameEn:identity.schoolNameEn,institutionName:identity.institutionNameMr,address:identity.addressMr,logo:'data:image/jpeg;base64,'+fs.readFileSync('../../assets/school-logo.jpg').toString('base64')};
+ const fields=Object.fromEntries(Object.entries(candidates).filter(([key,value])=>value&&!original.fields[key]).map(([key,value])=>[key,{stringValue:value}]));
+ fs.writeFileSync('tenant-identity-before.local',JSON.stringify(original),{flag:'wx'});
+ if(Object.keys(fields).length)await db.post(`projects/${project}/databases/(default)/documents:commit`,{writes:[{update:{name,fields},updateMask:{fieldPaths:Object.keys(fields)},currentDocument:{updateTime:original.updateTime}}]});
+ const api=new Client({urlPrefix:'https://identitytoolkit.googleapis.com',apiVersion:'v2'});
+ const config=(await api.get(`projects/${project}/config`)).body;
+ const domains=[...new Set([...(config.authorizedDomains||[]),'www.perfectedu.co.in','perfectedu.co.in','school-erp-jet.vercel.app'])];
+ if(domains.length!==(config.authorizedDomains||[]).length)await api.patch(`projects/${project}/config`,{authorizedDomains:domains},{queryParams:{updateMask:'authorizedDomains'}});
+ console.log(JSON.stringify({uidVerified:true,role:member.fields.role.stringValue,schoolIdentityFieldsAdded:Object.keys(fields),authorizedDomains:domains,operationalRecordsModified:false,passwordModified:false}));
+})().catch(error=>{console.error(error.message);process.exitCode=1;});

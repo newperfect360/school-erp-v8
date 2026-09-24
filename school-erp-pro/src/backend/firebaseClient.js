@@ -1,5 +1,5 @@
 import {initializeApp,getApps} from 'firebase/app';
-import {getAuth,connectAuthEmulator,signInWithEmailAndPassword,signOut} from 'firebase/auth';
+import {initializeAuth,browserSessionPersistence,connectAuthEmulator,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {getFirestore,connectFirestoreEmulator} from 'firebase/firestore';
 import {getStorage,connectStorageEmulator} from 'firebase/storage';
 import {developmentEnabled} from '@development-auth';
@@ -18,7 +18,7 @@ export function schoolFirebase(){
  if(!schoolId||schoolId.includes('/'))throw Error('A valid school tenant ID is required.');
  if(emulator&&!config.projectId.startsWith('demo-'))throw Error('Local emulator mode requires a demo- project ID, never a live school project.');
  const app=getApps().find(a=>a.name==='shared-school')||initializeApp(config,'shared-school');
- const auth=getAuth(app),db=getFirestore(app),storage=getStorage(app);
+ const auth=initializeAuth(app,{persistence:browserSessionPersistence}),db=getFirestore(app),storage=getStorage(app);
  if(emulator){const host=import.meta.env.VITE_FIREBASE_EMULATOR_HOST||'127.0.0.1';connectAuthEmulator(auth,`http://${host}:9099`,{disableWarnings:true});connectFirestoreEmulator(db,host,8080);connectStorageEmulator(storage,host,9199)}
  client={app,auth,db,storage,schoolId,projectId:config.projectId,emulator};
  return client;

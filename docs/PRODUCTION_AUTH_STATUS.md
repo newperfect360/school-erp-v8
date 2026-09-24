@@ -1,6 +1,22 @@
 # Production authentication preparation — 20 September 2026
 
-## Current authoritative status: bootstrap applied
+## Latest production verification: 24 September 2026
+
+This section supersedes the historical status below. Production is NOT yet verified ready.
+
+- Google Cloud Billing API confirms billingEnabled=true for school-managment-8c102.
+- perfectEduAuth deployed in asia-south1; production rules deployed after the tenant emulator suite passed. Function build-image retention configured for seven days.
+- Verified backup: backend/production-backup-1790223719315.local, SHA256 c8b3066d6a63a0e3d51b269b5eaf04f9991d16dc17a55cad49b9f4489c756d3a. Includes legacy records and prior rules. No legacy operational records migrated or deleted.
+- Existing administrator UID F2k0InkD73eV9bDjXRNzl1Bw34j1 remains enabled with SUPER_ADMIN, active=true, passwordSetupComplete=true. No account or password created/replaced. API exposes SCHOOL_SUPER_ADMIN as the school-scoped role alias.
+- Existing tenant gbs-school resolves UDISE 27190113523 uniquely with ACTIVE status. Only missing identity fields were populated from approved existing school assets.
+- Vercel production variables configured. Deployment dpl_DQpyYeSZrAU3kHe4xMLpWcu6P1dq (school-hpo6be2k6-perfect360.vercel.app) is live on https://www.perfectedu.co.in.
+- Real visible Chrome verified https://www.perfectedu.co.in/login, correct school recognition and no school configuration warning. Unauthenticated backend session request returns 401.
+- Owner reported a login error during private password entry. Exact error text requested; Dashboard has NOT been verified. Firebase last successful sign-in timestamp remains 2026-06-26T10:15:33.714Z as of this check. Email/Password provider is enabled and custom domains authorized.
+- Emulator tests passed school resolution, authenticated session, session reload, repository writes, denied cross-tenant operations, denied staff escalation and suspended-school denial. These are NOT evidence of successful real owner login or live cross-client synchronization.
+- Live authenticated Firestore read/write, live tenant-isolation verification and Web/Android synchronization remain unverified. Existing Android test APK is not a verified production client. No final APK built in this deployment task.
+- No password or authentication token recorded in this report.
+
+## Historical status: bootstrap applied
 
 See [PRODUCTION_BOOTSTRAP_RESULT.md](PRODUCTION_BOOTSTRAP_RESULT.md). Under subsequent explicit approval, the tested legacy-compatible activation rules were deployed and the verified existing UID received its gbs-school SUPER_ADMIN membership. All 13 legacy documents are unchanged. Work stopped when the actual live Vercel page still reported missing sign-in configuration. Prior statements below that no membership/rules were applied describe earlier checkpoints and are superseded. Real Web/Android login and synchronization remain unverified.
 

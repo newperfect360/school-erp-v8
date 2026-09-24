@@ -7,3 +7,11 @@ school-erp-pro/backend/
 school-erp-pro/tests/
 school-erp-pro/test-results/
 school-erp-pro/playwright-report/
+**/*.local
+**/.env*
+**/node_modules/
+**/.demo-data/
+**/*.log
+.codex/
+.agents/
+artifacts/
