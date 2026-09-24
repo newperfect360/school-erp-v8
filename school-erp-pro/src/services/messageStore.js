@@ -1,4 +1,6 @@
 import {prepareAutomationDue,configForAttendance} from './attendanceAutomationStore';
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
+import {saveSharedMessageJobs} from './sharedMessageQueue';
 import {planMessages,automationTemplates} from './attendanceAutomation';
 import {lifecycleActive} from './studentLifecycle';
 import {readStored,writeStored,localDate} from '../storage';
@@ -16,6 +18,11 @@ export function preparedJobIssue(job){
  return '';
 }
 export function queueMessages(events,{force=false}={}){
+ if(sharedOperationalEnabled){
+  const aliases={'Fee Receipt':'Fee Received','Fee Reminder':'Fee Due','Homework':'Homework Assigned'},previous=readStored(jobsKey,[]);
+  const next=planMessages(events.map(e=>({...e,type:aliases[e.type]||e.type,fields:{date:e.details?.Date||localDate(),time:e.details?.Time,amount:e.details?.Amount,receipt_no:e.details?.Receipt,fee_type:e.details?.['Fee Type'],details:e.details?.Details,due_date:e.details?.['Due Date'],...e.fields}})),readStored('erp_pro_students',[]).filter(lifecycleActive),readStored('schoolSettings',{}),configForAttendance(),previous,'event-preview');
+  return saveSharedMessageJobs(next,previous);
+ }
  const aliases={'Fee Receipt':'Fee Received','Fee Reminder':'Fee Due','Homework':'Homework Assigned'};
  const modern=events.filter(e=>automationTemplates[aliases[e.type]||e.type]);
  if(modern.length){const previous=readStored(jobsKey,[]);const next=planMessages(modern.map(e=>({...e,type:aliases[e.type]||e.type,fields:{date:e.details?.Date||localDate(),time:e.details?.Time,amount:e.details?.Amount,receipt_no:e.details?.Receipt,fee_type:e.details?.['Fee Type'],details:e.details?.Details,due_date:e.details?.['Due Date'],...e.fields}})),readStored('erp_pro_students',[]).filter(lifecycleActive),readStored('schoolSettings',{}),configForAttendance(),previous,'event-preview');if(next.length!==previous.length&&!writeStored(jobsKey,next))throw Error('Could not save dry-run queue.');const rest=events.filter(e=>!modern.includes(e));return next.length-previous.length+(rest.length?queueMessages(rest,{force}):0);}

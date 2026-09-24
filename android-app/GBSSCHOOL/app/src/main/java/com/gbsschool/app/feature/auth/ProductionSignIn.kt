@@ -6,12 +6,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.gbsschool.app.data.firebase.TenantAuthentication
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.FirebaseApp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.gbsschool.app.BuildConfig
-import com.gbsschool.app.core.designsystem.SchoolBrand
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
@@ -23,8 +26,13 @@ import com.gbsschool.app.feature.operations.SchoolWorkspace
 /** Uses the same Firebase Auth users and schools/{school}/members/{uid} as web. */
 @Composable
 fun ProductionSignIn(configurationAvailable: Boolean = true) {
-    val configured = configurationAvailable && BuildConfig.FIREBASE_CONFIGURED && BuildConfig.SCHOOL_TENANT_ID.isNotBlank()
-    val auth = remember { if (configured) FirebaseAuth.getInstance() else null }
+    val context = LocalContext.current
+    val requested = configurationAvailable && BuildConfig.FIREBASE_CONFIGURED && BuildConfig.TENANT_AUTH_URL.isNotBlank()
+    val auth = remember(requested) { if(requested) runCatching { FirebaseApp.initializeApp(context); FirebaseAuth.getInstance() }.getOrNull() else null }
+    val configured = requested && auth != null
+    var udise by rememberSaveable { mutableStateOf("") }
+    var schoolId by rememberSaveable { mutableStateOf("") }
+    var schoolName by rememberSaveable { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var nextPassword by remember { mutableStateOf("") }
@@ -33,26 +41,48 @@ fun ProductionSignIn(configurationAvailable: Boolean = true) {
     var message by remember { mutableStateOf("") }
     var role by remember { mutableStateOf<String?>(null) }
     var modules by remember { mutableStateOf(listOf<String>()) }
-    DisposableEffect(auth) {
+    DisposableEffect(auth, schoolId) {
         var membership: ListenerRegistration? = null
+        var school: ListenerRegistration? = null
+        var live = true
         val listener = FirebaseAuth.AuthStateListener { provider ->
-            membership?.remove(); role = null; modules = emptyList()
-            provider.currentUser?.let { user ->
-                membership = FirebaseFirestore.getInstance().document("schools/${BuildConfig.SCHOOL_TENANT_ID}/members/${user.uid}")
-                    .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
-                        if (error != null || snapshot == null || snapshot.metadata.isFromCache ||
-                            snapshot.getBoolean("active") != true || snapshot.getBoolean("passwordSetupComplete") != true || snapshot.get("modules") !is List<*>) {
-                            role = null; modules = emptyList(); message = "School access requires online verification and administrator activation."
+            membership?.remove(); school?.remove(); role = null; modules = emptyList()
+            val user = provider.currentUser
+            if (user != null && schoolId.isNotBlank()) {
+                user.getIdToken(false).continueWithTask { token ->
+                    TenantAuthentication.request("session", udise.trim(), token = token.result.token)
+                }.addOnCompleteListener { verified ->
+                    if (live && provider.currentUser?.uid == user.uid) {
+                        if (!verified.isSuccessful || verified.result.getJSONObject("school").optString("id") != schoolId) {
+                            message = "This account has no verified access to the selected school."
                         } else {
-                            role = snapshot.getString("role")
-                            modules = (snapshot.get("modules") as List<*>).filterIsInstance<String>()
-                            message = ""
+                            var schoolActive = false
+                            var memberRole: String? = null
+                            var memberModules = listOf<String>()
+                            fun publish() { if(live) { role = if(schoolActive) memberRole else null; modules = if(role != null) memberModules else emptyList() } }
+                            school = FirebaseFirestore.getInstance().document("schools/$schoolId")
+                                .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+                                    schoolActive = error == null && snapshot != null && !snapshot.metadata.isFromCache && snapshot.getString("status") == "ACTIVE"
+                                    publish()
+                                }
+                            membership = FirebaseFirestore.getInstance().document("schools/$schoolId/members/${user.uid}")
+                                .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+                                    if(error != null || snapshot == null || snapshot.metadata.isFromCache || snapshot.getBoolean("active") != true || snapshot.getBoolean("passwordSetupComplete") != true) {
+                                        memberRole = null; memberModules = emptyList()
+                                    } else {
+                                        memberRole = snapshot.getString("role")
+                                        memberModules = (snapshot.get("modules") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                                        message = ""
+                                    }
+                                    publish()
+                                }
                         }
                     }
+                }
             }
         }
         auth?.addAuthStateListener(listener)
-        onDispose { auth?.removeAuthStateListener(listener); membership?.remove() }
+        onDispose { live = false; auth?.removeAuthStateListener(listener); membership?.remove(); school?.remove() }
     }
     // Conservative maximum session lifetime, including time spent in background.
     LaunchedEffect(role) {
@@ -64,18 +94,31 @@ fun ProductionSignIn(configurationAvailable: Boolean = true) {
     }
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SchoolBrand()
+            Text("Perfect Education", style = MaterialTheme.typography.headlineMedium)
+            Text("School Management Platform")
             if (!configured) Text("School sign-in configuration is required. Contact your administrator.")
             Text(if (role == null) "School sign-in" else "Account security", style = MaterialTheme.typography.headlineMedium)
             if (role == null) {
-                OutlinedTextField(email, { email = it }, label = { Text("School email") }, singleLine = true)
+                OutlinedTextField(udise, { udise = it; schoolId = ""; schoolName = "" }, label = { Text("School UDISE Code") }, singleLine = true)
+                OutlinedTextField(email, { email = it }, label = { Text("User ID / Email / Mobile") }, singleLine = true)
                 OutlinedTextField(password, { password = it }, label = { Text("Password") }, singleLine = true,
                     visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation())
                 Button(enabled = configured && !busy && email.isNotBlank() && password.isNotBlank(), onClick = {
                     busy = true
-                    auth!!.signInWithEmailAndPassword(email.trim(), password).addOnCompleteListener {
-                        busy = false; password = ""
-                        if (!it.isSuccessful) message = "Sign-in failed. Check your details or try again later."
+                    message = ""
+                    TenantAuthentication.request("identifier", udise.trim(), email.trim()).addOnCompleteListener { resolved ->
+                        if(!resolved.isSuccessful) { busy = false; message = resolved.exception?.message ?: "School could not be identified." }
+                        else {
+                            val result = resolved.result
+                            val school = result.getJSONObject("school")
+                            auth!!.signOut()
+                            schoolId = school.getString("id")
+                            schoolName = school.optString("schoolName")
+                            auth.signInWithEmailAndPassword(result.getString("email"), password).addOnCompleteListener {
+                                busy = false; password = ""
+                                if(!it.isSuccessful) message = "Sign-in failed. Check your details or try again later."
+                            }
+                        }
                     }
                 }) { Text("Sign in") }
                 TextButton(enabled = configured && !busy && email.isNotBlank(), onClick = {
@@ -87,7 +130,8 @@ fun ProductionSignIn(configurationAvailable: Boolean = true) {
             } else {
                 Text("Role: $role")
                 Text("Assigned modules: ${modules.joinToString()}")
-                SchoolWorkspace(modules)
+                Text("$schoolName | UDISE: $udise | Tenant: $schoolId")
+                key(schoolId) { SchoolWorkspace(modules, schoolId = schoolId) }
                 OutlinedTextField(password, { password = it }, label = { Text("Current password") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation())
                 OutlinedTextField(nextPassword, { nextPassword = it }, label = { Text("New password (12+ characters)") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation())
                 Button(enabled = !busy && password.isNotBlank() && nextPassword.length in 12..128 && password != nextPassword, onClick = {

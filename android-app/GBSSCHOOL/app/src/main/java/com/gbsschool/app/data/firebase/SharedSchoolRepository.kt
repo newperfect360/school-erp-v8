@@ -46,9 +46,9 @@ class SharedSchoolRepository(private val backend: FirebaseBackend, val schoolId:
         val member = requireNotNull(membership)
         val base = backend.firestore.collection("$root/$collection")
         val queries = mutableListOf<Query>()
-        if (member["role"] in listOf("Admin", "Super Admin", "SUPER_ADMIN")) queries.add(base)
+        if (member["role"] in listOf("Admin", "ADMIN", "Super Admin", "SUPER_ADMIN", "SCHOOL_SUPER_ADMIN", "SCHOOL_ADMIN")) queries.add(base)
         else {
-            if (collection in listOf("academic_years", "notifications", "settings") || (collection == "library" && member["role"] == "Library Staff")) queries.add(base.whereEqualTo("class_id", ""))
+            if ((collection == "teachers" && member["role"] in listOf("Headmaster", "HEADMASTER")) || collection in listOf("academic_years", "notifications", "settings") || (collection == "library" && member["role"] in listOf("Library Staff", "LIBRARIAN"))) queries.add(base.whereEqualTo("class_id", ""))
             (member["classIds"] as? List<*>)?.filterIsInstance<String>()?.chunked(30)?.forEach { queries.add(base.whereIn("class_id", it)) }
             (member["studentIds"] as? List<*>)?.filterIsInstance<String>()?.chunked(30)?.forEach { queries.add(base.whereIn(if (collection == "students") "id" else "data.studentId", it)) }
         }

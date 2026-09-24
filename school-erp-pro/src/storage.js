@@ -1,14 +1,18 @@
 import {schoolStorage} from './backend/demoClient';
-import {isSharedKey,sharedSnapshot} from "./backend/sharedReadCache";
+import {isSharedKey,sharedSnapshot,sharedOperationalEnabled} from "./backend/sharedReadCache";
 import {resolveSchoolSettings} from './services/schoolIdentity';
 import { notify } from "./components/Feedback";
 import { useEffect, useRef, useState } from "react";
 import {demoActive,demoCommit} from './backend/demoClient';
 import {tagNewYearRecords,yearForDate,academicYears} from './services/academicYears';
+const operationalKey=key=>key.startsWith('erp_pro_')&&key!=='erp_pro_language';
 
 export function readStored(key, fallback) {
+  // Never display a previous school's browser-only register in a cloud tenant.
+  if(sharedOperationalEnabled&&operationalKey(key)&&!isSharedKey(key))return fallback;
   try {
     const raw = isSharedKey(key)?sharedSnapshot(key):schoolStorage.getItem(key);
+    if(key==='schoolSettings'&&isSharedKey(key))return raw===null?fallback:JSON.parse(raw);
     if (raw === null) return key === "schoolSettings" ? resolveSchoolSettings(fallback) : fallback;
     const value = JSON.parse(raw);
     if (Array.isArray(fallback) ? !Array.isArray(value) : !value || typeof value !== "object" || Array.isArray(value)) {
@@ -21,6 +25,7 @@ export function readStored(key, fallback) {
 }
 
 export function writeStored(key, value) {
+  if(sharedOperationalEnabled&&operationalKey(key)&&!isSharedKey(key)){notify('This register needs its shared backend workflow. No browser-local production record was saved.');return false;}
   if(isSharedKey(key)){notify("Use the shared school save action. Browser-local writes are disabled for this register.");return false;}
   if(key === "schoolSettings")value=resolveSchoolSettings(value);
   try {
@@ -67,6 +72,7 @@ export function useStoredState(key, fallback) {
 
 // Synchronous multi-key local commit with rollback. This is not a cloud transaction.
 export function commitStoredBatch(entries, expected = {}) {
+  if(sharedOperationalEnabled&&Object.keys(entries).some(operationalKey))throw Error('Production school records require a shared database transaction. Browser data was not changed.');
   if(Object.keys(entries).some(isSharedKey))throw Error("This register requires an acknowledged Firestore transaction. No local copy was saved.");
   entries=Object.fromEntries(Object.entries(entries).map(([key,value])=>[key,tagNewYearRecords(key,value,readStored(key,[]))]));
   if(entries.erp_pro_attendance){const years=readStored('erp_pro_attendance_years',{}),before=readStored('erp_pro_attendance',{});for(const date of Object.keys(entries.erp_pro_attendance)){if(JSON.stringify(before[date])===JSON.stringify(entries.erp_pro_attendance[date]))continue;const year=years[date]||yearForDate(date);if(academicYears().some(y=>y.id===year&&y.status!=='Open'))throw Error('Attendance year is closed or archived. Reopen it before editing.');years[date]=year;}entries.erp_pro_attendance_years=years;}

@@ -1,4 +1,6 @@
 import {schoolStorage} from '../backend/demoClient';
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
+import SharedSchoolBackup from '../components/SharedSchoolBackup';
 import { useLanguage } from "../design/language";
 import CleanupBackup from '../components/CleanupBackup';
 import { useState } from "react";
@@ -9,7 +11,8 @@ import { canonical, normalizeDate } from "../services/studentImport";
 
 const allowed = key => /^erp_pro_[a-zA-Z0-9_]+$/.test(key) && !/password|token|credential|users/i.test(key) || key === "schoolSettings";
 const cleanSettings = data => Object.fromEntries(Object.entries(data).filter(([key]) => !/token|password|secret|apiKey/i.test(key)));
-export default function BackupRestore() {
+export default function BackupRestore(){return sharedOperationalEnabled?<SharedSchoolBackup/>:<LocalBackupRestore/>;}
+function LocalBackupRestore() {
   const { t } = useLanguage();
   const [preview, setPreview] = useState(null), [confirmed, setConfirmed] = useState(false);
   const download = () => { const data = {}; for (let i = 0; i < schoolStorage.length; i++) { const key = schoolStorage.key(i); if (allowed(key)) { const value = JSON.parse(schoolStorage.getItem(key)); data[key] = JSON.stringify(key === "schoolSettings" ? cleanSettings(value) : value); } } const url = URL.createObjectURL(new Blob([JSON.stringify({ version: 2, createdAt: new Date().toISOString(), includesBinaryAssets: false, data }, null, 2)], { type: "application/json" })); const a = document.createElement("a"); a.href = url; a.download = "school-records-backup.json"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };

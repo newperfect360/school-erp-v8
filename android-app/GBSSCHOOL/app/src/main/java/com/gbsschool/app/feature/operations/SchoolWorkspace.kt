@@ -26,10 +26,14 @@ private val screens = listOf(
     Screen("Teachers", "Teachers", "teachers", listOf("name","designation","subject","mobile","email"),"teacher"),
     Screen("Staff", "Staff", "teachers", listOf("employeeId","name","designation","subject","mobile","joiningDate"),"staff"),
     Screen("Attendance", "Attendance / उपस्थिती", "attendance", listOf("studentId","date","academicYear","status","arrivalTime","outTime","reason","remark")),
+    Screen("Staff", "Staff Attendance", "teachers", listOf("employeeId","employeeName","date","status","inTime","outTime","correctionReason","remark"), "staff_attendance"),
     Screen("Fees", "Fees / शुल्क", "fees", listOf("studentId","type","total","paid","receipt","date")),
     Screen("Notices", "Notices / सूचना", "notifications", listOf("title","audience","text","date","channel"),"notice"),
     Screen("AcademicYears", "Academic years", "academic_years", listOf("name","startDate","endDate","status")),
-    Screen("Homework", "Homework", "homework", listOf("title","className","division","subject","date","details")),
+    Screen("Homework", "Homework", "homework", listOf("title","className","division","subject","date","details"),"homework"),
+    Screen("Classwork", "Classwork", "homework", listOf("className","division","subject","date","teacher","classwork"),"classwork"),
+    Screen("Meetings", "Parent meetings", "parents", listOf("studentId","parent","teacher","date","time","purpose","discussion","outcome","followup"),"meeting"),
+    Screen("Visits", "Parent visits", "parents", listOf("studentId","parent","teacher","date","time","purpose","discussion","outcome","followup"),"visit"),
     Screen("Results", "Results / निकाल", "results", listOf("studentId","exam","subject","maxMarks","obtainedMarks","academicYear")),
     Screen("Library", "Library / ग्रंथालय", "library", listOf("bookId","name","author","copies","shelf"),"book"),
     Screen("Sports", "Sports", "sports", listOf("name","sport","quantity","condition"),"equipment"),
@@ -39,9 +43,9 @@ private val screens = listOf(
 
 /** Live repository UI. Save succeeds only after the Firestore transaction acknowledges it. */
 @Composable
-fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null, sessionActorUid: String? = null) {
+fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null, sessionActorUid: String? = null, schoolId: String = BuildConfig.SCHOOL_TENANT_ID) {
     val context = LocalContext.current
-    val repo = remember(repository) { repository ?: SharedSchoolRepository(FirebaseBackend(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance(), FirebaseStorage.getInstance()), BuildConfig.SCHOOL_TENANT_ID) }
+    val repo = remember(repository, schoolId) { repository ?: SharedSchoolRepository(FirebaseBackend(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance(), FirebaseStorage.getInstance()), schoolId) }
     val allowed = screens.filter { it.module in modules }
     var selected by remember { mutableStateOf(allowed.firstOrNull()) }
     LaunchedEffect(modules) { if (selected !in allowed) selected = allowed.firstOrNull() }
@@ -83,7 +87,13 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
         selected?.kind?.let { values["kind"] = it }
         val linked = students.find { it["id"] == values["studentId"] }
         var classId = row?.get("class_id")?.toString() ?: ""
+        if(values.containsKey("className") && values.containsKey("division")) classId = "${values["className"]}:${values["division"]}"
         if (!deleted) {
+            if(screen.collection == "homework") {
+                val content = if(screen.kind == "classwork") "classwork" else "details"
+                if(listOf("className","division","subject","date",content).any { values[it]?.toString().isNullOrBlank() }) { message = "Class, division, subject, date and lesson details are required."; return }
+            }
+            if(screen.collection == "parents" && screen.kind in listOf("meeting","visit") && listOf("parent","teacher","date","time","purpose").any { values[it]?.toString().isNullOrBlank() }) { message = "Parent, teacher, date, time and purpose are required."; return }
             if (screen.fields.any { it in listOf("name","title","studentId") && values[it]?.toString().isNullOrBlank() }) { message = "Complete the required name, title or student field."; return }
             if (screen.collection == "teachers" && screen.kind == "teacher") {
                 if (values["subject"].toString().isBlank() || !Regex("[0-9]{10}").matches(values["mobile"].toString())) { message = "Teacher subject and a 10-digit mobile number required."; return }
@@ -91,6 +101,15 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
                 if (emailValue.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(emailValue).matches()) { message = "Enter a valid email address."; return }
             }
             if (screen.collection == "teachers" && screen.kind == "staff" && values["employeeId"].toString().isBlank()) { message = "Staff employee ID required."; return }
+            if(screen.kind == "staff_attendance") {
+                if(values["employeeId"].toString().isBlank() || values["status"] !in listOf("Present","Absent","Late","On Leave","Half Day","Official Duty","Early Leave")) { message = "Select staff ID and a valid attendance status."; return }
+                val date = values["date"].toString()
+                val format = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT).apply { isLenient = false }
+                val valid = try { format.format(format.parse(date)!!) == date && date <= format.format(java.util.Date()) } catch(_:Exception) { false }
+                if(!valid) { message = "Enter a valid non-future date."; return }
+                if(row != null && values["correctionReason"].toString().isBlank()) { message = "Enter the correction reason."; return }
+                if(row == null) id = "staff_" + date + "_" + values["employeeId"].toString()
+            }
             if (screen.collection in listOf("library","sports")) {
                 val field = if (screen.collection == "library") "copies" else "quantity"
                 val quantity = values[field].toString().toIntOrNull()
@@ -191,6 +210,18 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
                         OutlinedButton(onClick = { chooseStatus = true }, enabled = !busy) { Text(current[field]?.ifBlank { "Select attendance status" } ?: "Select attendance status") }
                         DropdownMenu(chooseStatus, { chooseStatus = false }) { listOf("Present","Absent","Late","Permission Leave","Early Leave","Approved Leave","Sick Leave","Half Day","Official Duty").forEach { status -> DropdownMenuItem(text = { Text(status) }, onClick = { form = current + (field to status); chooseStatus = false }) } }
                     }
+                } else if (field == "employeeId" && selected?.kind == "staff_attendance") {
+                    var pickEmployee by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(onClick = { pickEmployee = true }, enabled = !busy && editing == null) { Text(current["employeeName"]?.ifBlank { "Select employee" } ?: "Select employee") }
+                        DropdownMenu(pickEmployee, { pickEmployee = false }) { rows.filter { (data(it)["kind"] ?: "teacher") in listOf("teacher","staff") }.forEach { employee -> DropdownMenuItem(text = { Text(data(employee)["name"].toString()) }, onClick = { form = current + mapOf("employeeId" to employee["id"].toString(), "employeeName" to data(employee)["name"].toString()); pickEmployee = false }) } }
+                    }
+                } else if (field == "status" && selected?.kind == "staff_attendance") {
+                    var pickStatus by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(onClick = { pickStatus = true }, enabled = !busy) { Text(current[field]?.ifBlank { "Select status" } ?: "Select status") }
+                        DropdownMenu(pickStatus, { pickStatus = false }) { listOf("Present","Absent","Late","On Leave","Half Day","Official Duty","Early Leave").forEach { value -> DropdownMenuItem(text = { Text(value) }, onClick = { form = current + (field to value); pickStatus = false }) } }
+                    }
                 } else if (field == "studentId") {
                     var pick by remember { mutableStateOf(false) }
                     Box {
@@ -201,10 +232,10 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button(onClick = { commit(editing,false) }, enabled = !busy) { Text("Save") }; TextButton(onClick = { form = null; editing = null }, enabled = !busy) { Text("Cancel") } }
         }
-        rows.filter { selected?.kind == null || (data(it)["kind"] ?: when(selected?.collection) { "teachers" -> "teacher"; "library" -> "book"; "sports" -> "equipment"; "notifications" -> "notice"; else -> null }) == selected?.kind }.filter { data(it).values.joinToString(" ").contains(search,ignoreCase=true) }.forEach { row ->
+        rows.filter { selected?.kind == null || (data(it)["kind"] ?: when(selected?.collection) { "teachers" -> "teacher"; "library" -> "book"; "sports" -> "equipment"; "notifications" -> "notice"; "homework" -> "homework"; else -> null }) == selected?.kind }.filter { data(it).values.joinToString(" ").contains(search,ignoreCase=true) }.forEach { row ->
             Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
                 selected?.fields?.forEach { key -> Text("$key: ${data(row)[key] ?: ""}") }
-                Row { TextButton(onClick = { editing = row; form = selected!!.fields.associateWith { data(row)[it]?.toString() ?: "" } + ("participantIds" to ((data(row)["participants"] as? List<*>)?.filterIsInstance<Map<*,*>>()?.mapNotNull { it["studentId"]?.toString() }?.joinToString(",") ?: "")) }, enabled = !busy) { Text("Edit") }; TextButton(onClick = { deleting = row }, enabled = !busy) { Text("Archive") } }
+                Row { TextButton(onClick = { editing = row; form = selected!!.fields.associateWith { data(row)[it]?.toString() ?: "" } + ("participantIds" to ((data(row)["participants"] as? List<*>)?.filterIsInstance<Map<*,*>>()?.mapNotNull { it["studentId"]?.toString() }?.joinToString(",") ?: "")) }, enabled = !busy) { Text("Edit") }; TextButton(onClick = { deleting = row }, enabled = !busy && selected?.kind != "staff_attendance") { Text("Archive") } }
                 val contact = if (selected?.collection == "students") row else students.find { it["id"] == data(row)["studentId"] }
                 if (contact != null && selected?.collection in listOf("students","attendance")) {
                     TextButton(onClick={audioPicker.launch("audio/*")}) { Text("Audio message — choose file") }

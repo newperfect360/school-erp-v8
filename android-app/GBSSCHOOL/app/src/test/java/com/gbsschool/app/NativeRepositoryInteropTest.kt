@@ -105,6 +105,15 @@ class NativeRepositoryInteropTest {
                 values[if(collection=="notifications") "title" else "name"] = if(collection=="notifications") "TEST Native Notice" else "TEST Native "+collection
                 await(repo.mutate(SchoolMutation(collection,record.id,record.getString("class_id") ?: "",record.getLong("version")!!,values)))
             }
+            for(collection in listOf("homework","parents")) {
+                val record=await(db.collection("schools/gbs-school/"+collection).get()).documents.single()
+                @Suppress("UNCHECKED_CAST")
+                val values=(record.get("data") as Map<String,Any?>).toMutableMap()
+                val key=if(collection=="homework") "details" else "purpose"
+                assertEquals(if(collection=="homework") "TEST Web Homework" else "TEST Web meeting",values[key])
+                values[key]=if(collection=="homework") "TEST Native Homework" else "TEST Native meeting"
+                await(repo.mutate(SchoolMutation(collection,record.id,record.getString("class_id") ?: "",record.getLong("version")!!,values)))
+            }
             val imported = await(db.collection("schools/gbs-school/students").whereEqualTo("data.grNo","TEST-IMPORT-CLOUD").get()).documents.single()
             assertEquals("TEST Cloud Import",imported.getString("data.name"))
             val year = await(db.document("schools/gbs-school/academic_years/2027-28").get())
@@ -112,7 +121,7 @@ class NativeRepositoryInteropTest {
             val yearData=(year.get("data") as Map<String,Any?>).toMutableMap()
             yearData["status"]="Closed"
             await(repo.mutate(SchoolMutation("academic_years",year.id,"",year.getLong("version")!!,yearData)))
-            compose.setContent { SchoolTheme { Column(Modifier.verticalScroll(rememberScrollState())) { SchoolWorkspace(listOf("Teachers"),repo) } } }
+            compose.setContent { SchoolTheme { Column(Modifier.verticalScroll(rememberScrollState())) { SchoolWorkspace(listOf("Teachers","Classwork"),repo) } } }
             compose.waitUntil(60000) { runCatching { compose.onNodeWithText("Add record").assertIsEnabled() }.isSuccess }
             compose.onNodeWithText("Add record").performScrollTo().performClick()
             compose.onNodeWithText("name",substring=false).performScrollTo().performTextInput("TEST Native UI Teacher")
@@ -121,6 +130,13 @@ class NativeRepositoryInteropTest {
             compose.onNodeWithText("Save",substring=false).performScrollTo().performClick()
             compose.waitUntil(60000) { compose.onAllNodesWithText("name: TEST Native UI Teacher").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("name: TEST Native UI Teacher").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Teachers",substring=false).performScrollTo().performClick()
+            compose.onNodeWithText("Classwork",substring=false).performClick()
+            compose.onNodeWithText("Add record").performScrollTo().performClick()
+            for((field,value) in mapOf("className" to "5","division" to "A","subject" to "TEST Native Subject","date" to "2026-09-24","classwork" to "TEST Native classwork")) compose.onNodeWithText(field,substring=false).performScrollTo().performTextInput(value)
+            compose.onNodeWithText("Save",substring=false).performScrollTo().performClick()
+            compose.waitUntil(60000) { compose.onAllNodesWithText("classwork: TEST Native classwork").fetchSemanticsNodes().isNotEmpty() }
+
         } finally {
             auth.signOut()
             await(db.terminate())

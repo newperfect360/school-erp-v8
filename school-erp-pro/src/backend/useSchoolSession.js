@@ -1,3 +1,4 @@
+import {schoolRole} from './schoolRoles.js';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -23,7 +24,7 @@ export default function useSchoolSession() {
         if(current!==generation)return;
         const member=currentMember;
         if(!schoolReady||!member?.active||!Array.isArray(member.modules)||member.passwordSetupComplete!==true){setSession(null);setStatus('Connecting to verify your school and permissions.');return;}
-        setSession({uid:user.uid,email:user.email,schoolId:client.schoolId,udise:school?.udise||'',school,schoolRole:['SUPER_ADMIN','SCHOOL_SUPER_ADMIN','Super Admin'].includes(member.role)?'SCHOOL_SUPER_ADMIN':member.role,role:['SUPER_ADMIN','SCHOOL_SUPER_ADMIN'].includes(member.role)?'Super Admin':member.role==='SCHOOL_ADMIN'?'Admin':member.role,modules:member.modules,resources:member.resources||[]});setStatus('');
+        setSession({uid:user.uid,email:user.email,schoolId:client.schoolId,udise:school?.udise||'',school,schoolRole:['SUPER_ADMIN','SCHOOL_SUPER_ADMIN','Super Admin'].includes(member.role)?'SCHOOL_SUPER_ADMIN':member.role,role:schoolRole(member.role),modules:member.modules,resources:member.resources||[]});setStatus('');
       };
       if(school)stopSchool=onSnapshot(doc(client.db,'schools',school.id),{includeMetadataChanges:true},snapshot=>{schoolReady=!snapshot.metadata.fromCache&&snapshot.data()?.status==='ACTIVE';publish();},()=>{schoolReady=false;publish();setStatus('School access could not be verified.');});
       stopMember=onSnapshot(doc(client.db,'schools',client.schoolId,'members',user.uid),{includeMetadataChanges:true},snapshot=>{currentMember=snapshot.metadata.fromCache?null:snapshot.data();publish();},()=>{currentMember=null;publish();setStatus('School membership could not be verified.');});

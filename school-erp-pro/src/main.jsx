@@ -22,6 +22,6 @@ initializeSchoolIdentity();
 document.title='PerfectEdu | School Management';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <LanguageProvider>{window.location.pathname.replace(/\/$/,'')==='/platform-admin'?<PlatformAdministration/>:window.location.pathname==='/'?<PerfectEduHome/>:window.location.pathname.replace(/\/$/, '') === '/admin' ? (developmentEnabled?<PerfectEduPlatform/>:<PlatformAdministration/>) : window.location.pathname.replace(/\/$/, '') === '/download-app' ? <DownloadApp /> : <App />}</LanguageProvider>
+    <LanguageProvider>{['/platform-admin','/platform-admin/login'].includes(window.location.pathname.replace(/\/$/,''))?<PlatformAdministration/>:window.location.pathname==='/'?<PerfectEduHome/>:window.location.pathname.replace(/\/$/, '') === '/admin' ? (developmentEnabled?<PerfectEduPlatform/>:<PlatformAdministration/>) : window.location.pathname.replace(/\/$/, '') === '/download-app' ? <DownloadApp /> : <App />}</LanguageProvider>
   </StrictMode>,
 )

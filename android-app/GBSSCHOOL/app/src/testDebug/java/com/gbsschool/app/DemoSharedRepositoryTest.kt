@@ -16,6 +16,7 @@ import org.robolectric.annotation.Config
 class DemoSharedRepositoryTest {
  private fun <T> await(task:Task<T>):T {val until=System.currentTimeMillis()+15000;while(!task.isComplete&&System.currentTimeMillis()<until){shadowOf(Looper.getMainLooper()).idle();Thread.sleep(20)};check(task.isComplete);return task.getResult(Exception::class.java)}
  @Test fun nativeReadsWebStudentAndWritesBackToSharedStore(){
+  org.junit.Assume.assumeTrue("Requires freshly seeded isolated demo fixtures", System.getenv("SCHOOL_DEMO_INTEROP") == "true")
   val repository=DemoServerRepository();assertEquals("SUPER_ADMIN",await(repository.login("dilippawar2207@gmail.com","admin1234"))["role"])
   var rows=emptyList<Map<String,Any>>();var error:Exception?=null
   val stop=repository.watch("students",{rows=it},{error=it})

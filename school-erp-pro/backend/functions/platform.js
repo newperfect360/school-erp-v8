@@ -8,18 +8,33 @@ export async function platformAction(req){
  const match=/^Bearer (.+)$/.exec(req.get('Authorization')||'');if(!match)fail(401,'Platform sign-in required.');
  const token=await auth.verifyIdToken(match[1],true);
  const authority=(await db.doc(`platform_members/${token.uid}`).get()).data();
- if(authority?.active!==true||authority.role!=='PLATFORM_SUPER_ADMIN')fail(403,'Platform administrator permission required.');
+ if(authority?.active!==true||!['PLATFORM_SUPER_ADMIN','PLATFORM_SUPPORT'].includes(authority.role))fail(403,'Platform administrator permission required.');
  const {action,schoolId,school,user}=req.body;
+ if(authority.role==='PLATFORM_SUPPORT'&&!['platform-session','platform-list'].includes(action))fail(403,'Platform support has read-only school directory and aggregate statistics access.');
  const audit=(verb,id,extra={})=>({actor:token.uid,action:verb,schoolId:id||'',at:FieldValue.serverTimestamp(),...extra});
  const schoolRef=()=>{if(!/^[a-z0-9][a-z0-9-]{1,62}$/.test(schoolId||''))fail(400,'Invalid tenant ID.');return db.doc(`schools/${schoolId}`);};
- if(action==='platform-session')return {role:'PLATFORM_SUPER_ADMIN',email:token.email};
+ if(action==='platform-session')return {role:authority.role,email:token.email};
+ if(action==='platform-authorities'){
+  const rows=await db.collection('platform_members').get();
+  const users=await Promise.all(rows.docs.map(async row=>{let account;try{account=await auth.getUser(row.id);}catch(error){if(error.code!=='auth/user-not-found')throw error;}return {uid:row.id,email:account?.email||'',role:row.data().role,active:row.data().active===true,authDisabled:account?.disabled??true,lastSignIn:account?.metadata.lastSignInTime||null};}));return {users};
+ }
+ if(action==='platform-save-authority'){
+  if(!user?.email||!['PLATFORM_SUPER_ADMIN','PLATFORM_SUPPORT'].includes(user.role)||typeof user.active!=='boolean')fail(400,'Choose an existing account, platform role and status.');
+  let account;try{account=await auth.getUserByEmail(user.email.trim().toLowerCase());}catch(error){if(error.code==='auth/user-not-found')fail(404,'Create the authorized account securely in Firebase Authentication first. No account was created.');throw error;}
+  if(account.disabled&&user.active)fail(409,'The existing Authentication account is disabled.');
+  if(account.uid===token.uid&&(user.role!=='PLATFORM_SUPER_ADMIN'||!user.active))fail(409,'You cannot remove your own platform administrator access.');
+  await db.runTransaction(async tx=>{const owner=await tx.get(db.doc(`platform_members/${token.uid}`));if(owner.data()?.active!==true||owner.data()?.role!=='PLATFORM_SUPER_ADMIN')fail(403,'Platform authority changed. Sign in again.');
+   const target=db.doc(`platform_members/${account.uid}`),old=(await tx.get(target)).data();tx.set(target,{role:user.role,active:user.active,updatedAt:FieldValue.serverTimestamp(),updatedBy:token.uid},{merge:true});tx.create(db.collection('platform_audit_logs').doc(),audit('platform.authority.update','',{targetUid:account.uid,before:old?{role:old.role,active:old.active}:null,after:{role:user.role,active:user.active}}));});
+  return {saved:true,uid:account.uid};
+ }
  if(action==='platform-list'){
   const rows=await db.collection('schools').get();
   const userIds=new Set((await db.collection('platform_members').get()).docs.map(d=>d.id));
   const schools=await Promise.all(rows.docs.map(async d=>{
-   const counts=await Promise.all(['students','teachers','staff','members'].map(async name=>{const snap=await d.ref.collection(name).get();if(name==='members')snap.docs.forEach(r=>userIds.add(r.id));return snap.docs.filter(r=>r.data().deleted!==true).length;}));
-   const {logo,...data}=d.data();return {...data,id:d.id,studentCount:counts[0],teacherCount:counts[1],staffCount:counts[2],userCount:counts[3]};
-  }));return {schools,totalPlatformUsers:userIds.size};
+   const groups=await Promise.all(['students','teachers','staff','members'].map(async name=>{const snap=await d.ref.collection(name).get();if(name==='members')snap.docs.forEach(r=>userIds.add(r.id));return snap.docs.filter(r=>r.data().deleted!==true);}));
+   const staffIds=new Set([...groups[2],...groups[1].filter(r=>r.data().data?.kind==='staff')].map(r=>r.id));
+   const {logo:_logo,...data}=d.data();return {...data,id:d.id,studentCount:groups[0].length,teacherCount:groups[1].filter(r=>(r.data().data?.kind||'teacher')==='teacher').length,staffCount:staffIds.size,userCount:groups[3].length};
+  }));return {schools:authority.role==='PLATFORM_SUPPORT'?schools.map(s=>Object.fromEntries(['id','schoolNameEn','schoolNameMr','udise','status','district','createdAt','studentCount','teacherCount','staffCount','userCount'].map(key=>[key,s[key]??null]))):schools,totalPlatformUsers:userIds.size};
  }
  if(action==='platform-logs'){const logs=await db.collection('platform_audit_logs').orderBy('at','desc').limit(100).get();return {logs:logs.docs.map(d=>({id:d.id,...d.data(),at:d.data().at?.toDate().toISOString()}))};}
  if(action==='platform-settings'){const ref=db.doc('platform_settings/general');if(req.body.settings){const s=req.body.settings;if(typeof s.supportEmail!=='string'||typeof s.platformName!=='string')fail(400,'Invalid settings.');const batch=db.batch();batch.set(ref,{supportEmail:s.supportEmail.slice(0,254),platformName:s.platformName.slice(0,100)},{merge:true});batch.create(db.collection('platform_audit_logs').doc(),audit(action));await batch.commit();}return {settings:(await ref.get()).data()||{platformName:'Perfect Education',supportEmail:''}};}

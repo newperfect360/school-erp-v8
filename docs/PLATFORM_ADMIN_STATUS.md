@@ -1,6 +1,17 @@
 # Perfect Education platform administration — 24 September 2026
 
+## Dedicated-login verification update
+
+The dedicated platform-login change was deployed as https://school-3p27e9y9o-perfect360.vercel.app. Real Chrome verified `/platform-admin` redirects an unauthenticated visitor to `/platform-admin/login`, shows Super Admin Login with zero UDISE fields, and uses the Perfect Education / Platform Administration title. The live school UDISE login form remains present. Both public login links are visible at desktop 1366px and mobile 390px without horizontal overflow.
+
+The owner explicitly confirmed **Platform Dashboard opened** on the live site. This is owner-confirmed live access, not a claim that automation observed the authenticated Dashboard: the controlled Chrome window was closed before its dashboard observer completed. Firebase account remains enabled with the same UID; no password was read or changed.
+
+The final saved emulator/browser regression passed actual school sign-in, platform sign-in after denied school-user access, correct dashboard URL, school creation/editing, school-admin provisioning, cross-tenant denial, context refresh and logout. Production two-school CRUD/isolation has not been exercised with real authenticated users. Full production readiness is still not claimed. Historical pending-login statements below are superseded by the owner's confirmation for platform access only.
+
 ## Scope and authority
+
+- Dedicated platform login: https://www.perfectedu.co.in/platform-admin/login. It has no UDISE field, displays Super Admin Login, and uses the existing Firebase account plus server-verified PLATFORM_SUPER_ADMIN authority. Successful verification opens `/platform-admin`; missing/unauthorized sessions return to the dedicated login URL.
+- School login remains https://www.perfectedu.co.in/login with UDISE, identifier and password. Public navigation now provides separate school and platform login links.
 
 - Public route: https://www.perfectedu.co.in/platform-admin. Production `/admin` also opens this panel; development `/admin` retains its existing development-only implementation.
 - Existing owner email explicitly selected by the owner: dilippawar2207@gmail.com. Existing Firebase UID: F2k0InkD73eV9bDjXRNzl1Bw34j1.

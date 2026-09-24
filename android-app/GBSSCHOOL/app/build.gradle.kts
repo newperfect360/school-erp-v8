@@ -23,6 +23,9 @@ android {
         val schoolTenant = providers.gradleProperty("SCHOOL_TENANT_ID").orElse("").get()
         require(schoolTenant.matches(Regex("[A-Za-z0-9_-]*"))) { "Invalid school tenant ID" }
         buildConfigField("String", "SCHOOL_TENANT_ID", "\"$schoolTenant\"")
+        val tenantEndpoint = providers.gradleProperty("TENANT_AUTH_URL").orElse("").get()
+        require(tenantEndpoint.isBlank() || (tenantEndpoint.startsWith("https://") && !tenantEndpoint.contains('"') && !tenantEndpoint.contains('\\'))) { "Invalid HTTPS tenant endpoint" }
+        buildConfigField("String", "TENANT_AUTH_URL", "\"$tenantEndpoint\"")
         vectorDrawables.useSupportLibrary = true
     }
 

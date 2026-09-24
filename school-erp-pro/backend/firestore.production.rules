@@ -9,30 +9,34 @@ service cloud.firestore {
 
     function member(school) { return get(/databases/$(database)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
     function active(school) { return request.auth != null && get(/databases/$(database)/documents/schools/$(school)).data.status == 'ACTIVE' && member(school).active == true && member(school).passwordSetupComplete == true; }
-    function admin(school) { return active(school) && member(school).role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN']; }
+    function admin(school) { return active(school) && member(school).role in ["Admin","ADMIN","SCHOOL_ADMIN","Super Admin","SUPER_ADMIN","SCHOOL_SUPER_ADMIN"]; }
     function known(resource) { return resource in ['students','parents','teachers','attendance','academic_years','homework','exams','results','fees','library','sports','scholarships','trips','certificates','notifications','communication_logs','settings']; }
     function moduleAllowed(school, resource) {
       let m = member(school);
       return active(school) && m.active == true && m.passwordSetupComplete == true && resource in m.resources && (
-        m.role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || resource in ['academic_years','notifications','settings'] ||
-        (m.role in ['Teacher','Class Teacher','Subject Teacher'] && resource in ['students','parents','attendance','homework','exams','results','communication_logs','certificates']) ||
-        (m.role == 'Sports Teacher' && resource in ['students','sports','communication_logs']) ||
-        (m.role == 'Library Staff' && resource in ['students','library','communication_logs']) ||
-        (m.role == 'Accounts Staff' && resource in ['students','fees','communication_logs']) ||
-        (m.role in ['Headmaster','Clerk','Office Staff'] && known(resource))
+        m.role in ["Read Only","READ_ONLY","VIEW_ONLY"] ||
+        m.role in ["Admin","ADMIN","SCHOOL_ADMIN","Super Admin","SUPER_ADMIN","SCHOOL_SUPER_ADMIN"] || resource in ['academic_years','notifications','settings'] ||
+        (m.role in ["Teacher","TEACHER","Class Teacher","CLASS_TEACHER","Subject Teacher","SUBJECT_TEACHER"] && resource in ['students','parents','attendance','homework','exams','results','communication_logs','certificates']) ||
+        (m.role == 'Trip In-charge' && resource in ['students','trips','communication_logs']) ||
+        (m.role in ["Sports Teacher","SPORTS_TEACHER"] && resource in ['students','sports','communication_logs']) ||
+        (m.role in ["Library Staff","LIBRARIAN"] && resource in ['students','library','communication_logs']) ||
+        (m.role in ["Accounts Staff","ACCOUNTANT"] && resource in ['students','fees','communication_logs']) ||
+        (m.role in ["Headmaster","HEADMASTER","Clerk","CLERK","Office Staff","STAFF"] && known(resource))
       );
     }
     function scopeAllowed(school, resource, row) {
       let m = member(school);
-      return m.role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || row.class_id in m.classIds ||
+      return m.role in ["Admin","ADMIN","SCHOOL_ADMIN","Super Admin","SUPER_ADMIN","SCHOOL_SUPER_ADMIN"] || row.class_id in m.classIds ||
         (resource == 'students' && row.id in m.studentIds) ||
         ('studentId' in row.data && row.data.studentId in m.studentIds) ||
-        (row.class_id == '' && resource in ['academic_years','notifications','settings']) ||
-        (row.class_id == '' && resource == 'library' && m.role == 'Library Staff');
+        (row.class_id == '' && (resource in ['academic_years','notifications','settings'] || (resource == 'teachers' && m.role in ["Headmaster","HEADMASTER"]))) ||
+        (row.class_id == '' && resource == 'library' && m.role in ["Library Staff","LIBRARIAN"]);
     }
     function canWrite(school, collection, row) {
-      return moduleAllowed(school, collection) && scopeAllowed(school, collection, row) &&
-        (member(school).role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
+      return !(member(school).role in ["Read Only","READ_ONLY","VIEW_ONLY"]) && moduleAllowed(school, collection) && scopeAllowed(school, collection, row) &&
+        (member(school).role in ["Admin","ADMIN","SCHOOL_ADMIN","Super Admin","SUPER_ADMIN","SCHOOL_SUPER_ADMIN"] ||
+         (collection == 'teachers' && row.data.get('kind','teacher') == 'staff_attendance' && member(school).role in ["Headmaster","HEADMASTER"]) ||
+         !(collection in ['settings','academic_years','notifications','certificates','teachers']));
     }
     function envelope(id) {
       return request.resource.data.keys().hasOnly(['id','class_id','version','updated_at','updated_by','deleted','data']) &&
@@ -41,14 +45,18 @@ service cloud.firestore {
         request.resource.data.updated_by == request.auth.uid && request.resource.data.updated_at == request.time;
     }
     function linkedScope(school,row) {
-      return (!('studentId' in row.data) || row.data.studentId == '' ||
-        get(/databases/$(database)/documents/schools/$(school)/students/$(row.data.studentId)).data.class_id == row.class_id) &&
+      return (row.data.get('kind','') != 'staff_attendance' || getAfter(/databases/$(database)/documents/schools/$(school)/teachers/$(row.data.employeeId)).data.data.get('kind','teacher') in ['teacher','staff']) &&
+        (!('studentId' in row.data) || row.data.studentId == '' ||
+        getAfter(/databases/$(database)/documents/schools/$(school)/students/$(row.data.studentId)).data.class_id == row.class_id) &&
         (!('className' in row.data) || !('division' in row.data) || row.class_id == row.data.className + ':' + row.data.division);
     }
     function domainValid(collection,row) {
-      return collection != 'attendance' || (row.data.studentId is string && row.data.studentId.size() > 0 &&
+      return (collection != 'teachers' || row.data.get('kind','teacher') != 'staff_attendance' ||
+        (!row.deleted && row.data.employeeId is string && row.data.employeeId.size() > 0 && row.id == 'staff_' + row.data.date + '_' + row.data.employeeId && row.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+         row.data.status in ['Present','Absent','Late','On Leave','Half Day','Official Duty','Early Leave'])) &&
+        (collection != 'attendance' || (row.data.studentId is string && row.data.studentId.size() > 0 &&
         row.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') && row.data.academicYear is string &&
-        row.data.academicYear.size() > 0 && row.data.status in ['Present','Absent','Late','Leave','Permission Leave','Approved Leave','Sick Leave','Early Leave','Official Duty','Half Day','Medical Leave','Sports Duty','Trip Duty']);
+        row.data.academicYear.size() > 0 && row.data.status in ['Present','Absent','Late','Leave','Permission Leave','Approved Leave','Sick Leave','Early Leave','Official Duty','Half Day','Medical Leave','Sports Duty','Trip Duty']));
     }
     function auditMatches(school, collection, id) {
       let key = collection + '_' + id + '_' + string(request.resource.data.version);
@@ -66,15 +74,8 @@ service cloud.firestore {
     match /schools/{school}/members/{uid} {
       allow get: if request.auth != null && (request.auth.uid == uid || admin(school));
       allow list: if admin(school);
-      allow update: if admin(school) && uid != request.auth.uid &&
-        !(resource.data.role in ['Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN']) &&
-        (member(school).role in ['Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || (resource.data.role != 'Admin' && request.resource.data.role != 'Admin')) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','modules','resources','classIds','studentIds','active']) &&
-        request.resource.data.role in ['Admin','Headmaster','Teacher','Class Teacher','Subject Teacher','Clerk','Office Staff','Sports Teacher','Trip In-charge','Library Staff','Accounts Staff'] &&
-        request.resource.data.active is bool && request.resource.data.modules is list && request.resource.data.resources is list &&
-        request.resource.data.classIds is list && request.resource.data.studentIds is list &&
-        request.resource.data.modules.hasOnly(member(school).modules) && request.resource.data.resources.hasOnly(member(school).resources);
-      allow create, delete: if false;
+      // Membership changes use the audited, tenant-verified backend only.
+      allow create, update, delete: if false;
     }
     match /schools/{school}/student_gr/{gr} {
       allow get: if active(school);
@@ -101,6 +102,8 @@ service cloud.firestore {
       allow create: if known(collection) && canWrite(school,collection,request.resource.data) && envelope(id) && linkedScope(school,request.resource.data) && domainValid(collection,request.resource.data) && request.resource.data.version == 1 &&
         auditMatches(school,collection,id) && (collection != 'students' || studentValid(school,id));
       allow update: if known(collection) && canWrite(school,collection,resource.data) && scopeAllowed(school,collection,request.resource.data) && envelope(id) && linkedScope(school,request.resource.data) && domainValid(collection,request.resource.data) &&
+        (collection != 'teachers' || resource.data.data.get('kind','teacher') != 'staff_attendance' ||
+         (request.resource.data.data.kind == 'staff_attendance' && request.resource.data.data.employeeId == resource.data.data.employeeId && request.resource.data.data.date == resource.data.data.date && request.resource.data.data.correctionReason is string && request.resource.data.data.correctionReason.size() > 0 && !request.resource.data.deleted)) &&
         request.resource.data.version == resource.data.version + 1 && auditMatches(school,collection,id) &&
         (admin(school) || request.resource.data.class_id == resource.data.class_id) &&
         (collection != 'students' || (studentValid(school,id) && request.resource.data.data.grNo == resource.data.data.grNo));

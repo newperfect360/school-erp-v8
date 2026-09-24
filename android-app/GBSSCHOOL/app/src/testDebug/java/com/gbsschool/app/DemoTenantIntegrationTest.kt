@@ -22,6 +22,7 @@ class DemoTenantIntegrationTest {
   close();failure?.let{throw it};return checkNotNull(rows)
  }
  @Test fun twoUdiseLoginsReadOnlyOwnWebImportsAndWriteBackIndependently(){
+  org.junit.Assume.assumeTrue("Requires freshly seeded isolated demo fixtures", System.getenv("SCHOOL_DEMO_TENANT_INTEROP") == "true")
   val tenantIds=mutableSetOf<String>()
   for(index in 0..1){
    val repository=DemoServerRepository();val member=await(repository.login("admin","TEST-school-$index-password!","DEMO00000${index+1}"));tenantIds.add(member["schoolId"].toString())

@@ -5,9 +5,11 @@ import { notify } from "../components/Feedback";
 import { PageHeading } from "../design/SchoolUI";
 import {developmentEnabled} from '@development-auth';
 import DevelopmentUsers from './DevelopmentUsers';
+import SchoolUsers from './SchoolUsers';
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
 
 export const schoolRoles = ["Super Admin", "Headmaster", "Admin", "Class Teacher", "Subject Teacher", "Sports Teacher", "Trip In-charge", "Library Staff", "Office Staff", "Accounts Staff"];
-export default function AccessSetup(){return developmentEnabled?<DevelopmentUsers/>:<ProductionAccessSetup/>;}
+export default function AccessSetup(){return developmentEnabled?<DevelopmentUsers/>:sharedOperationalEnabled?<SchoolUsers/>:<ProductionAccessSetup/>;}
 function ProductionAccessSetup() {
   const { t } = useLanguage();
   const [requests, saveRequests] = useStoredState("erp_pro_access_requests", []), [form, setForm] = useState({ name: "", email: "", role: "Class Teacher", assignedClass: "", assignedSubject: "", permissions: "", employeeId: "", username: "", mobile: "", photo: "" });

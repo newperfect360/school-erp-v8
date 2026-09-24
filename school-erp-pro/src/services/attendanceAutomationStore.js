@@ -1,4 +1,5 @@
 import {schoolStorage} from '../backend/demoClient';
+import {saveSharedMessageJobs} from './sharedMessageQueue';
 import {sharedOperationalEnabled} from '../backend/sharedReadCache';
 import { readStored, commitStoredBatch, localDate } from '../storage';
 import { lifecycleActive } from './studentLifecycle';
@@ -68,6 +69,9 @@ export function prepareAutomationDue(now = new Date(), actor = 'scheduler-previe
   }
   const source = schoolStorage.getItem('erp_pro_message_jobs'), previous = readStored('erp_pro_message_jobs', []);
   const jobs = planMessages(events, students, readStored('schoolSettings', {}), config, previous, actor);
-  if (jobs.length !== previous.length) commitStoredBatch({ erp_pro_message_jobs: jobs }, { erp_pro_message_jobs: source });
+  if (jobs.length !== previous.length) {
+    if(sharedOperationalEnabled)return saveSharedMessageJobs(jobs,previous);
+    commitStoredBatch({ erp_pro_message_jobs: jobs }, { erp_pro_message_jobs: source });
+  }
   return jobs.length - previous.length;
 }

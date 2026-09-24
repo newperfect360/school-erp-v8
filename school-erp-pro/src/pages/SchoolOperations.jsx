@@ -1,3 +1,5 @@
+import SharedStaffAttendance from '../components/SharedStaffAttendance';
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
 import {schoolStorage} from '../backend/demoClient';
 import {useSharedRecords} from "../backend/useSharedRecords";
 import {exportRows} from '../services/excel';
@@ -71,7 +73,7 @@ function SchoolRecordPanel({ module }) {
 
   const backup = () => { downloadJson(`school-erp-backup-${new Date().toISOString().slice(0, 10)}.json`, createBackup()); recordAudit("Backup डाउनलोड", { scope: "localStorage" }); };
 
-  return <div className="page module-page">{module === "Staff" && <StaffAttendance/>}
+  return <div className="page module-page">{module === "Staff" && (sharedOperationalEnabled?<SharedStaffAttendance/>:<StaffAttendance/>)}
     <div className="module-heading"><div><span className="eyebrow">{definition.eyebrow}</span><h2>{definition.title}</h2><p>शाळेच्या दैनंदिन कामकाजासाठी सुरक्षित, शोधता येणारी नोंदवही.</p></div><div className="module-count">{items.length}<span>एकूण नोंदी</span></div></div>
     <section className="workflow-panel"><div className="panel-title"><h3>नवीन नोंद</h3><span>डेटा migration किंवा delete होत नाही</span></div><div className="form-grid">{definition.fields.map((field) => <input key={field} aria-label={field} placeholder={field} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />)}</div><p role="status">{connection.status}</p><button disabled={connection.busy} onClick={save}>नोंद जतन करा</button>{module === "Admissions" && <button className="button-muted" onClick={backup}>Backup डाउनलोड</button>}</section>
     <input className="module-search" aria-label="नोंदी शोधा" placeholder={`${definition.title} मध्ये शोधा`} value={query} onChange={(event) => setQuery(event.target.value)} />

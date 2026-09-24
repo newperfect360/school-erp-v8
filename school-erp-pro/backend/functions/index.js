@@ -4,10 +4,11 @@ import {getFirestore,Timestamp} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {createHash} from 'node:crypto';
 import {platformAction} from './platform.js';
+import {schoolUsersAction} from './schoolUsers.js';
 initializeApp();
 const db=getFirestore();
 const deny=(status,message)=>{throw Object.assign(Error(message),{httpStatus:status});};
-const approvedRoles=new Set(['SUPER_ADMIN','SCHOOL_SUPER_ADMIN','SCHOOL_ADMIN','Super Admin','Admin','ADMIN','Headmaster','HEADMASTER','Teacher','TEACHER','Class Teacher','CLASS_TEACHER','Subject Teacher','Clerk','CLERK','Office Staff','STAFF','Sports Teacher','SPORTS_TEACHER','Trip In-charge','Library Staff','LIBRARIAN','Accounts Staff','ACCOUNTANT','VIEW_ONLY']);
+const approvedRoles=new Set(['SUPER_ADMIN','SCHOOL_SUPER_ADMIN','SCHOOL_ADMIN','Super Admin','Admin','ADMIN','Headmaster','HEADMASTER','Teacher','TEACHER','Class Teacher','CLASS_TEACHER','Subject Teacher','SUBJECT_TEACHER','Clerk','CLERK','Office Staff','STAFF','Sports Teacher','SPORTS_TEACHER','Trip In-charge','Library Staff','LIBRARIAN','Accounts Staff','ACCOUNTANT','VIEW_ONLY','READ_ONLY','Read Only']);
 async function schoolFor(udise){
  if(!/^\d{11}$/.test(udise||''))deny(400,'Enter the school’s 11-digit UDISE.');
  const found=await db.collection('schools').where('udise','==',udise).limit(2).get();
@@ -45,11 +46,12 @@ export const perfectEduAuth=onRequest({region:'asia-south1',maxInstances:3,minIn
    if(user.disabled||!user.email)deny(401,'Unable to sign in. Check your school and account details.');
    return res.json({email:user.email,school});
   }
-  if(action!=='session')deny(400,'Unknown action.');
+  if(!['session','school-users','school-save-user'].includes(action))deny(400,'Unknown action.');
   const match=/^Bearer (.+)$/.exec(req.get('Authorization')||'');if(!match)deny(401,'Sign in required.');
   const token=await getAuth().verifyIdToken(match[1],true);
   const membership=await db.doc(`schools/${school.id}/members/${token.uid}`).get(),member=membership.data();
   if(!member?.active||member.passwordSetupComplete!==true||!approvedRoles.has(member.role)||!Array.isArray(member.modules)||!Array.isArray(member.resources))deny(403,'This account has no active access to the selected school.');
+  if(action!=='session')return res.json(await schoolUsersAction({db,token,school,member,action,user:req.body.user}));
   return res.json({school,uid:token.uid,role:member.role,schoolRole:['Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'].includes(member.role)?'SCHOOL_SUPER_ADMIN':member.role});
  }catch(error){return res.status(error.httpStatus||401).json({error:error.httpStatus?error.message:'Unable to verify school access. Please sign in again.'});}
 });

@@ -2,16 +2,20 @@ import ClassDivisionSettings from "../components/ClassDivisionSettings";
 import { notify } from "../components/Feedback";
 import { useState } from "react";
 import { readStored, writeStored } from "../storage";
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
+import {schoolFirebase} from '../backend/firebaseClient';
+import {createFirebaseRepository} from '../backend/firebaseRepository';
 
 export default function Settings({ onSaved, onNavigate }) {
   const [imageLoading, setImageLoading] = useState(false);
+  const [saving,setSaving]=useState(false);
   const [settings, setSettings] = useState(() => readStored("schoolSettings", {}));
 
   const change = (e) => {
     const { name, value, files } = e.target;
     if (name === "logo") {
       if (!files?.[0]) return;
-      if (!files[0].type.startsWith("image/") || files[0].size > 2 * 1024 * 1024) { notify("2 MB पेक्षा लहान image निवडा"); return; }
+      if (!["image/png","image/jpeg","image/webp"].includes(files[0].type) || files[0].size > 500 * 1024) { notify("500 KB पेक्षा लहान PNG, JPEG किंवा WebP image निवडा"); return; }
       setImageLoading(true);
       const reader = new FileReader();
       reader.onerror = () => { setImageLoading(false); notify("फोटो वाचता आला नाही. पुन्हा निवडा."); };
@@ -22,10 +26,23 @@ export default function Settings({ onSaved, onNavigate }) {
     }
   };
 
-  const save = () => {
+  const persist=async next=>{
+    if(saving)return false;
+    setSaving(true);
+    try{
+      if(sharedOperationalEnabled){
+        const client=schoolFirebase(),repo=createFirebaseRepository(client);await repo.membership();
+        const {__version,id:_id,...data}=next;
+        data.tenantId=client.schoolId;
+        const saved=await repo.mutate({collection:'settings',id:'general',classId:'',expectedVersion:__version||0,data,mutationId:crypto.randomUUID()});
+        next={...data,__version:saved.version};
+      }else if(!writeStored('schoolSettings',next))return false;
+      setSettings(next);onSaved?.(next);return true;
+    }catch(error){notify(error.message);return false;}finally{setSaving(false);}
+  };
+  const save = async () => {
     if (imageLoading) { notify("फोटो तयार होत आहे. क्षणभर थांबा."); return; }
-    if (!writeStored("schoolSettings", settings)) return;
-    onSaved?.(settings);
+    if (!await persist(settings)) return;
     notify("Settings Save झाले");
   };
 
@@ -42,7 +59,7 @@ export default function Settings({ onSaved, onNavigate }) {
 <div className="import-actions"><button onClick={()=>onNavigate?.("Automation")}>School Timing / Attendance Automation / Message Templates</button></div>
       <div className="module-heading"><div><span className="eyebrow">SCHOOL WORKSPACE</span><h2>शाळेच्या सेटिंग्ज</h2><p>शाळेची माहिती आणि संपर्क configuration</p></div></div>
 
-      <div className="form-grid">{[["schoolCode", "School Code / शाळा संकेतांक"], ["udise", "UDISE"], ["academicYear", "Academic Year / शैक्षणिक वर्ष"]].map(([name,label]) => <label key={name}>{label}<input name={name} value={settings[name] || ""} onChange={change} /></label>)}
+      <div className="form-grid">{[["schoolCode", "School Code / शाळा संकेतांक"], ["udise", "UDISE"], ["academicYear", "Academic Year / शैक्षणिक वर्ष"]].map(([name,label]) => <label key={name}>{label}<input name={name} value={settings[name] || ""} readOnly={sharedOperationalEnabled&&name==="udise"} onChange={change} /></label>)}
         <label>संस्थेचे नाव<textarea name="sansthaName" value={settings.sansthaName} onChange={change} rows={3}/></label>
         <label>शाळेचे नाव<input name="schoolName" placeholder="शाळेचे नाव" value={settings.schoolName} onChange={change} /></label>
         <label>पत्ता<input name="address" placeholder="पत्ता" value={settings.address} onChange={change} /></label>
@@ -59,8 +76,8 @@ export default function Settings({ onSaved, onNavigate }) {
       {settings.logo && <img src={settings.logo} width="100" alt="logo" />}
 
       <br />
-      <button disabled={imageLoading} onClick={save}>Save Settings</button>
-      <button onClick={testWhatsApp}>Test WhatsApp</button><ClassDivisionSettings rows={settings.classDivisions||[]} onSave={rows=>{const next={...settings,classDivisions:rows};if(!writeStored("schoolSettings",next))return false;setSettings(next);onSaved?.(next);return true;}}/>
+      <button disabled={imageLoading||saving} onClick={save}>{saving?'Saving to school database...':'Save Settings'}</button>
+      <button onClick={testWhatsApp}>Test WhatsApp</button><ClassDivisionSettings rows={settings.classDivisions||[]} onSave={rows=>persist({...settings,classDivisions:rows})}/>
     </div>
   );
 }

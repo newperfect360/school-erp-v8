@@ -19,15 +19,16 @@ class SchoolUiTest {
  private fun login(scale: Float = 1f) {
   compose.setContent { CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, scale)) { SchoolTheme { ProductionSignIn(configurationAvailable = false) } } }
  }
- @Test fun officialIdentityIsRetained() {
+ @Test fun schoolIdentityIsNotAssumedBeforeUdise() {
   login()
-  compose.onNodeWithText(compose.activity.getString(R.string.school_name_mr)).assertExists()
-  compose.onNodeWithText(compose.activity.getString(R.string.institution_name_mr)).assertExists()
+  compose.onNodeWithText("Perfect Education").assertExists()
+  compose.onNodeWithText(compose.activity.getString(R.string.school_name_mr)).assertDoesNotExist()
+  compose.onNodeWithText("School UDISE Code").assertExists()
  }
  @Test @Config(sdk = [35], qualifiers = "w360dp-h640dp-mdpi")
  fun compactPhoneCanReachFieldsAndPasswordControls() {
   login()
-  compose.onNodeWithText("School email").performScrollTo().performTextInput("TEST@example.invalid")
+  compose.onNodeWithText("User ID / Email / Mobile").performScrollTo().performTextInput("TEST@example.invalid")
   compose.onNodeWithText("Password", substring = false).performScrollTo().performTextInput("test-only-input")
   compose.onNodeWithText("Show passwords").performScrollTo().performClick()
   compose.onNodeWithText("Hide passwords").assertIsDisplayed()

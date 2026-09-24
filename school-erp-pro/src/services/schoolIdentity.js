@@ -1,3 +1,4 @@
+import {developmentEnabled} from '@development-auth';
 import {schoolStorage} from '../backend/demoClient';
 import identity from '../../../assets/school-identity.json';
 import logo from '../../../assets/school-logo.jpg?inline';
@@ -17,6 +18,7 @@ export function resolveSchoolSettings(saved={}) {
 // One-time authorized identity correction. Preserve the exact previous settings,
 // leave unrelated fields/records intact and never replace unreadable storage.
 export function initializeSchoolIdentity() {
+  if(import.meta.env.VITE_SCHOOL_DATA_MODE==='firebase'&&!developmentEnabled)return;
   try {
     const raw=schoolStorage.getItem('schoolSettings');
     if(raw===null)return;

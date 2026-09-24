@@ -2,17 +2,25 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function member(school) { return firestore.get(/databases/(default)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
+    function schoolActive(school){return request.auth != null && firestore.get(/databases/(default)/documents/schools/$(school)).data.status == 'ACTIVE';}
+    function schoolAdmin(m){return m.role in ['Admin','ADMIN','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'];}
     function allowed(school, student) {
       let m=member(school);
-      return request.auth != null && m.active == true && m.passwordSetupComplete == true && 'students' in m.resources && m.role in ['Admin','Super Admin','SUPER_ADMIN','Headmaster','Clerk','Office Staff','Teacher','Class Teacher','Subject Teacher','Sports Teacher','Library Staff','Accounts Staff'] &&
-        (m.role in ['Admin','Super Admin','SUPER_ADMIN'] || student in m.studentIds ||
+      return schoolActive(school) && m.active == true && m.passwordSetupComplete == true && 'students' in m.resources &&
+        (schoolAdmin(m) || student in m.studentIds ||
         firestore.get(/databases/(default)/documents/schools/$(school)/students/$(student)).data.class_id in m.classIds);
     }
     match /schools/{school}/students/{student}/{file} {
       allow read: if allowed(school,student);
-      allow create: if allowed(school,student) && request.resource.size < 10 * 1024 * 1024 &&
+      allow create: if allowed(school,student) && !(member(school).role in ['READ_ONLY','VIEW_ONLY','Read Only']) && request.resource.size < 10 * 1024 * 1024 &&
         request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf|audio/(mpeg|wav|ogg|webm|mp4)');
       allow update, delete: if false;
+    }
+    function classFiles(school,classId){let m=member(school);return schoolActive(school) && m.active == true && m.passwordSetupComplete == true && 'homework' in m.resources && (schoolAdmin(m)||classId in m.classIds);}
+    match /schools/{school}/class_files/{classId}/{file} {
+      allow read: if classFiles(school,classId);
+      allow create: if classFiles(school,classId) && member(school).role in ['Admin','ADMIN','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN','Headmaster','HEADMASTER','Teacher','TEACHER','Class Teacher','CLASS_TEACHER','Subject Teacher','SUBJECT_TEACHER','Clerk','CLERK','Office Staff','STAFF'] && request.resource.size < 10*1024*1024 && request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf|audio/(mpeg|wav|x-wav|ogg|webm|mp4)');
+      allow update,delete: if false;
     }
   }
 }

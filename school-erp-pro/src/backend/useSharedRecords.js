@@ -8,7 +8,7 @@ import {demoActive} from './demoClient';
 
 /** Existing forms await this setter. Firebase mode never writes an operational local copy. */
 const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
-const defaultKinds={teachers:"teacher",library:"book",sports:"equipment",notifications:"notice"};
+const defaultKinds={teachers:"teacher",library:"book",sports:"equipment",notifications:"notice",homework:'homework'};
 export function useSharedRecords(collection,localKey,options={}) {
  const kind=options.kind||defaultKinds[collection]||"",aliasKey=JSON.stringify(options.aliases||{});
  const local=useStoredState(localKey,[]);

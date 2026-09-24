@@ -3,7 +3,11 @@ import {academicSnapshot} from '../services/studentLifecycle';
 import { useLanguage } from "../design/language";
 import StudentLookup from "../components/StudentLookup";
 import { useRef, useState } from "react";
-import { readStored, useStoredState, localDate, commitStoredBatch } from "../storage";
+import { readStored, localDate, commitStoredBatch } from "../storage";
+import {useSharedRecords} from '../backend/useSharedRecords';
+import {sharedOperationalEnabled} from '../backend/sharedReadCache';
+import {schoolFirebase} from '../backend/firebaseClient';
+import {createFirebaseRepository} from '../backend/firebaseRepository';
 import { formatTypes, formatFields, groupFormats, placeholders, defaultFormat, templateContext, renderFormat, documentHtml, downloadDocument, sanitizeFormatHtml, safeCss, escapeHtml } from "../services/templates";
 import { aggregateResults } from "../services/results";
 import { normalizeDate } from "../services/studentImport";
@@ -13,8 +17,9 @@ import { notify } from "../components/Feedback";
 export default function SchoolFormats({ initialType = "Bonafide Certificate", settings = {}, studentId: initialStudent }) {
   const { t } = useLanguage();
   const students = readStored("erp_pro_students", []);
-  const [templates, saveTemplates] = useStoredState("erp_pro_document_templates", []);
-  const [history, , reloadHistory] = useStoredState("erp_pro_certificates", []);
+  const [templates, saveTemplates] = useSharedRecords('settings',"erp_pro_document_templates",{kind:'document_template'});
+  const [history, , , reloadHistory] = useSharedRecords('certificates',"erp_pro_certificates");
+  const [generating,setGenerating]=useState(false);
   const [type, setType] = useState(initialType), [selected, setSelected] = useState(initialStudent ? [initialStudent] : []);
   const [extras, setExtras] = useState({ issue_date: localDate(), academic_year: settings.academicYear || "2026-27", exam: "Annual Exam", month: localDate().slice(0, 7), reason: "", last_class: "", progress: "", conduct: "", content: "", remarks: "" });
   const [editor, setEditor] = useState(null), [preview, setPreview] = useState(""), [issued, setIssued] = useState(null);
@@ -23,7 +28,7 @@ export default function SchoolFormats({ initialType = "Bonafide Certificate", se
   const frame = useRef(null);
   const template = templates.find(item => item.type === type) || defaultFormat(type);
   const targets = () => groupFormats.includes(type) ? [{ name: "School group", groupIds: selected }] : students.filter(s => selected.includes(s.id));
-  const sourceSnapshot = () => JSON.stringify(["erp_pro_students", "erp_pro_results", "erp_pro_attendance", "erp_pro_document_templates", "schoolSettings"].map(key => schoolStorage.getItem(key)));
+  const sourceSnapshot = () => JSON.stringify(["erp_pro_students", "erp_pro_results", "erp_pro_attendance", "erp_pro_document_templates", "schoolSettings"].map(key => readStored(key,null)));
   const build = (student, number = "PREVIEW") => {
     const values = { ...extras, certificate_number: number, last_class: extras.last_class || student.className, previous_school: extras.previous_school || student.previousSchool, admission_date: extras.admission_date || student.admissionDate, emergency_contact: extras.emergency_contact || student.emergencyContact || student.mobile, medical_note: extras.medical_note || student.healthNotes };
     if (["Marksheet", "Annual Result", "Progress Card"].includes(type)) {
@@ -45,13 +50,15 @@ export default function SchoolFormats({ initialType = "Bonafide Certificate", se
     if (!normalizeDate(extras.issue_date)) return notify("Choose a valid issue date.");
     try { setPreview(documentHtml(targets().map(s => `<section class="document">${build(s)}</section>`).join(""), template.css)); setPreviewSource(sourceSnapshot()); setIssued(null); } catch (error) { notify(error.message); }
   };
-  const generate = () => {
+  const generate = async () => {
+    if(generating)return;
     if (!preview || (!selected.length && !groupFormats.includes(type))) return notify("Preview your selection before generating.");
     if (previewSource !== sourceSnapshot()) return notify("School records changed. Preview again before generating.");
     if (type === "Leaving Certificate" && ["reason", "last_class", "progress", "conduct"].some(k => !extras[k].trim())) return notify("Leaving reason, last class, progress and conduct are required.");
+    setGenerating(true);
     try {
       const source = schoolStorage.getItem("erp_pro_certificates");
-      const current = source === null ? [] : JSON.parse(source);
+      const current = sharedOperationalEnabled ? history : source === null ? [] : JSON.parse(source);
       const batch = targets().map(student => {
         const id = crypto.randomUUID(), certificateNo = `${type === "Leaving Certificate" ? "LC" : "DOC"}-${extras.issue_date.replaceAll("-", "")}-${id.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
         return { id, studentId: student.id || null, studentIds: student.groupIds, name: student.name, grNo: student.grNo, className: student.className, reason: type, certificateNo, issueDate: extras.issue_date, details: extras, templateVersion: template.version, draft: !template.approved, html: build(student, certificateNo), css: template.css };
@@ -65,12 +72,23 @@ export default function SchoolFormats({ initialType = "Bonafide Certificate", se
         entries.erp_pro_academic_history=[...readStored('erp_pro_academic_history',[]),...master.filter(s=>batch.some(c=>c.studentId===s.id)).map(s=>({id:crypto.randomUUID(),...academicSnapshot(s,readStored('erp_pro_results',[]),readStored('erp_pro_attendance',{}),'LC Issued',extras.issue_date)}))];
         entries.erp_pro_student_movements=[...movements,...batch.map(c=>({id:crypto.randomUUID(),studentId:c.studentId,studentName:c.name,action:'LC Issued',type:'LC Issued',oldValue:{status:master.find(s=>s.id===c.studentId)?.status||'Active'},newValue:{status:'TC/LC Issued',lcNumber:c.certificateNo},actor:'local-review',createdAt:new Date().toISOString(),reason:extras.reason}))];
       }
-      commitStoredBatch(entries,expected);
+      if(sharedOperationalEnabled){
+        const client=schoolFirebase(),repo=createFirebaseRepository(client);await repo.membership();
+        const mutations=batch.map(item=>{const student=students.find(s=>s.id===item.studentId);return {collection:'certificates',id:item.id,classId:student?`${student.className}:${student.division}`:'',expectedVersion:0,mutationId:crypto.randomUUID(),data:JSON.parse(JSON.stringify(item))};});
+        if(type==='Leaving Certificate'&&confirmExit){
+          for(const cert of batch){const original=students.find(s=>s.id===cert.studentId),{__version,...student}=entries.erp_pro_students.find(s=>s.id===cert.studentId);
+            student.movements=[...(original.movements||[]),...entries.erp_pro_student_movements.filter(m=>m.studentId===student.id&&!original.movements?.some(old=>old.id===m.id)).map(m=>({...m,actor:client.auth.currentUser.uid}))];
+            student.enrollmentHistory=[...(original.enrollmentHistory||[]),...entries.erp_pro_academic_history.filter(h=>h.studentId===student.id&&!original.enrollmentHistory?.some(old=>old.id===h.id))];
+            mutations.push({collection:'students',id:student.id,classId:`${student.className}:${student.division}`,expectedVersion:__version,mutationId:crypto.randomUUID(),data:JSON.parse(JSON.stringify(student))});
+          }
+        }
+        await repo.mutateMany(mutations);
+      }else commitStoredBatch(entries,expected);
       reloadHistory(); setIssued(batch); setPreview(documentHtml(batch.map(item => `<section class="document">${item.html}</section>`).join(""), template.css)); notify(`${batch.length} document records saved${template.approved ? "" : " as drafts"}.`);
-    } catch (error) { notify(error.message); }
+    } catch (error) { notify(error.message); }finally{setGenerating(false);}
   };
-  const saveTemplate = () => {
-    try { safeCss(editor.css); const saved = { ...editor, html: sanitizeFormatHtml(editor.html), version: (template.version || 1) + 1 }; if (saveTemplates([...templates.filter(t => t.type !== type), saved])) { setEditor(null); setPreview(""); notify("Template saved. Preview it before generating."); } } catch (error) { notify(error.message); }
+  const saveTemplate = async () => {
+    try { safeCss(editor.css); const saved = { ...editor, id:editor.id||crypto.randomUUID(), html: sanitizeFormatHtml(editor.html), version: (template.version || 1) + 1 }; if (await saveTemplates([...templates.filter(t => t.type !== type), saved])) { setEditor(null); setPreview(""); notify("Template saved. Preview it before generating."); } } catch (error) { notify(error.message); }
   };
   const invalidate = () => { setPreview(""); setIssued(null); };
   return <div className="core-page"><PageHeading eyebrow="SCHOOL DOCUMENT STUDIO" title="Formats & certificates" description="One Student Master. Reusable school formats. Preview every document before issuing." />

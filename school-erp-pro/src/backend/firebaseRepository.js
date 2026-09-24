@@ -1,3 +1,4 @@
+import {schoolRole} from './schoolRoles.js';
 import * as defaultFirestoreSdk from 'firebase/firestore';
 import {ref,uploadBytes,getBlob} from 'firebase/storage';
 import {collections,validateMutation,conflictError} from './recordProtocol.js';
@@ -10,12 +11,12 @@ export function createFirebaseRepository({db,storage,auth,schoolId,firestoreSdk=
  let member=null;
  const user=()=>{if(!auth.currentUser)throw Error('Sign in to your school account.');return auth.currentUser};
  const record=(name,id)=>doc(db,root,name,id);
- async function membership(){const snapshot=await getDoc(doc(db,root,'members',user().uid));if(!snapshot.exists()||snapshot.data().active!==true)throw Error('This account has no active school membership.');member={...snapshot.data(),uid:user().uid};return member}
+ async function membership(){const snapshot=await getDoc(doc(db,root,'members',user().uid));if(!snapshot.exists()||snapshot.data().active!==true)throw Error('This account has no active school membership.');member={...snapshot.data(),role:schoolRole(snapshot.data().role),uid:user().uid};return member}
  function queries(name){
   if(!collections.includes(name)||!member)throw Error('Load verified membership before reading school data.');
   const base=collection(db,root,name);if(admin(member))return [base];
   const list=[];
-  if(globalCollections.includes(name)||(name==='library'&&member.role==='Library Staff'))list.push(query(base,where('class_id','==','')));
+  if((name==='teachers'&&['Headmaster','HEADMASTER'].includes(member.role))||globalCollections.includes(name)||(name==='library'&&member.role==='Library Staff'))list.push(query(base,where('class_id','==','')));
   for(let i=0;i<(member.classIds||[]).length;i+=30)list.push(query(base,where('class_id','in',member.classIds.slice(i,i+30))));
   for(let i=0;i<(member.studentIds||[]).length;i+=30)list.push(query(base,where(name==='students'?'id':'data.studentId','in',member.studentIds.slice(i,i+30))));
   return list;
