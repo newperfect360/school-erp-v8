@@ -1,5 +1,5 @@
 {
-  "filesScanned": 254,
+  "filesScanned": 616,
   "findings": [],
   "logoUnchanged": true,
   "scope": "Current text source, configuration, templates and docs. Excludes build/dependency caches, historical screenshots, immutable issued records and external browser storage."

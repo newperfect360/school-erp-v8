@@ -21,6 +21,8 @@ fun SchoolBrand(modifier: Modifier = Modifier) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Image(painterResource(R.drawable.official_school_logo), "Official school logo", Modifier.width(54.dp).height(59.dp), contentScale = ContentScale.Fit)
         Column {
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.app_subtitle), style = MaterialTheme.typography.bodySmall, color = Muted)
             Text(stringResource(R.string.institution_name_mr), style = MaterialTheme.typography.labelSmall, color = Muted)
             Text(stringResource(R.string.school_name_mr), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.school_address_mr), style = MaterialTheme.typography.bodySmall, color = Muted)

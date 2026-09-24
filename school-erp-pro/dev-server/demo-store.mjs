@@ -121,7 +121,7 @@ export default function demoServer({enabled,file,factory=createDemoStore}){
         if(req.url==='/apk'&&['GET','HEAD'].includes(req.method)){
           const apk=fileURLToPath(new URL('../../android-app/GBSSCHOOL/app/build/outputs/apk/debug/app-debug.apk',import.meta.url));
           if(!existsSync(apk))fail('Build the debug APK first.',404);
-          res.setHeader('Content-Type','application/vnd.android.package-archive');res.setHeader('Content-Disposition','attachment; filename="GBSSCHOOL-demo-test.apk"');res.setHeader('Content-Length',statSync(apk).size);
+          res.setHeader('Content-Type','application/vnd.android.package-archive');res.setHeader('Content-Disposition','attachment; filename="Perfect-Education-debug.apk"');res.setHeader('Content-Length',statSync(apk).size);
           if(req.method==='HEAD')return res.end();return createReadStream(apk).on('error',()=>res.destroy()).pipe(res);
         }
         if(req.method!=='POST')fail('POST required.',405);

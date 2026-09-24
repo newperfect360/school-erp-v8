@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from assets/school-identity.json. -->
 <resources>
-    <string name="app_name">स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय</string>
+    <string name="app_name">Perfect Education</string>
+    <string name="app_subtitle">School Management Platform</string>
     <string name="institution_name_mr">स्व. अमानउल्ला मोतीवाला शिक्षण प्रसारक मंडळ, औरंगाबाद संचलित\n(अल्पसंख्याक शैक्षणिक संस्था)</string>
     <string name="institution_name_en"></string>
     <string name="school_name_mr">स्व. गुरुबक्षसिंग साबरवाल माध्यमिक व उच्च माध्यमिक विद्यालय</string>

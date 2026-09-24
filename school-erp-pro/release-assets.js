@@ -5,13 +5,12 @@ import { resolve } from 'node:path';
 const releaseDir = fileURLToPath(new URL('../releases/android/', import.meta.url));
 const assets = {
   'release.json': 'application/json',
-  'GBSSCHOOL-v1.0.0.apk': 'application/vnd.android.package-archive',
-  'login.png': 'image/png',
-  'dashboard.png': 'image/png',
 };
 
 // Serve only the explicit release files, never arbitrary workspace paths.
 export default function releaseAssets() {
+  const release = JSON.parse(readFileSync(resolve(releaseDir, 'release.json'), 'utf8'));
+  if (/^Perfect-Education-v[0-9A-Za-z.-]+\.apk$/.test(release.file)) assets[release.file] = 'application/vnd.android.package-archive';
   const mount = server => { server.middlewares.use((req, res, next) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
     if (!pathname.startsWith('/downloads/android/')) return next();

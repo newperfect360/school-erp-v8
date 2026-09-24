@@ -1,12 +1,12 @@
 {
   "packageId": "com.gbsschool.app",
-  "versionName": "1.0.0",
+  "versionName": "1.0.0-perfectedu-demo",
   "versionCode": 1,
-  "file": "GBSSCHOOL-v1.0.0.apk",
-  "buildType": "debug — UI preview only",
+  "file": "Perfect-Education-v1.0.0-perfectedu-demo.apk",
+  "buildType": "debug - development server required",
   "minSdk": 24,
   "targetSdk": 36,
-  "bytes": 24082190,
-  "sha256": "2f04fe3d74d37feab544ab0a1734dd933095717e621eac6f353e3b31344e3639",
-  "releaseDate": "2026-09-18"
+  "bytes": 24523262,
+  "sha256": "61111e8f92f3975f1a9752c15b54e4b4eeb642016e8af0a0399eace082abe0ae",
+  "releaseDate": "2026-09-24"
 }

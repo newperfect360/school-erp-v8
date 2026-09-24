@@ -34,12 +34,12 @@ fun SchoolEntry() {
     val repository = remember(emulator) { DemoServerRepository(if(emulator) "http://10.0.2.2:5178" else "http://127.0.0.1:5178") }
     if(webWorkspace){DemoWebWorkspace(emulator){webWorkspace=false};return}
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Text("PerfectEdu",style=MaterialTheme.typography.headlineMedium)
+        Text("Perfect Education",style=MaterialTheme.typography.headlineMedium)
         Text("www.perfectedu.co.in")
         Text("DEVELOPMENT / TEST MODE",style=MaterialTheme.typography.titleMedium)
         if (!signedIn) {
             Text("Development Admin Login",style=MaterialTheme.typography.headlineSmall)
-            Text("PerfectEdu DEMO / TEST BUILD. Uses the same computer demo server as Web. For a USB phone run: adb reverse tcp:5178 tcp:5178. No Firebase account is needed.")
+            Text("Perfect Education DEMO / TEST BUILD. Uses the same computer demo server as Web. For a USB phone run: adb reverse tcp:5178 tcp:5178. No Firebase account is needed.")
             Row { Checkbox(emulator,{emulator=it},enabled=!busy);Text("Android emulator connection") }
             OutlinedTextField(udise,{udise=it},label={Text("School UDISE Code")},singleLine=true)
             OutlinedTextField(username,{username=it},label={Text("Username / Email")},singleLine=true)
