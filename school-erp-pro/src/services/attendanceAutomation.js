@@ -3,7 +3,7 @@ import { normalizeParentMobile, parentContacts } from './absenceCommunication.js
 export const automationKey = 'erp_pro_attendance_automation';
 export const draftKey = 'erp_pro_attendance_drafts';
 export const submissionKey = 'erp_pro_attendance_submissions';
-export const studentStatuses = ['Present','Absent','Late','Permission Leave','Approved Leave','Sick Leave','Early Leave','Official Duty'];
+export const studentStatuses = ['Present','Absent','Late','Permission Leave','Approved Leave','Sick Leave','Early Leave','Half Day','Official Duty'];
 export const staffStatuses = ['Present','Absent','Late','On Leave','Half Day','Official Duty','Early Leave'];
 export const defaultTiming = { start: '07:30', end: '12:30', attendanceCutoff: '08:00', lateCutoff: '07:40' };
 export const automationDefaults = { dryRun: true, enabledClasses: [], language: 'mr', weeklyHolidays: [0],
@@ -13,6 +13,11 @@ export const automationDefaults = { dryRun: true, enabledClasses: [], language: 
 };
 const parent = (en, mr) => [`Dear Parent,\n${en}\n– {school_name}`, `आदरणीय पालक,\n${mr}\n– {school_name}`];
 export const automationTemplates = {
+  'Half Day': parent('Half-day attendance is recorded for {student_name} on {date}.','{student_name} यांची दिनांक {date} रोजी अर्ध्या दिवसाची उपस्थिती नोंदवली आहे.'),
+  'Parent Visit': parent('Parent visit for {student_name}: {details}.','{student_name} यांच्या पालक भेटीची माहिती: {details}.'),
+  'Library Book Issue': parent('Library book issued to {student_name}: {details}.','{student_name} यांना ग्रंथालयातील पुस्तक दिले आहे: {details}.'),
+  'Library Book Due': parent('Library book return is due for {student_name}: {details}.','{student_name} यांनी ग्रंथालयातील पुस्तक परत करण्याची वेळ आली आहे: {details}.'),
+  'Library Book Return': parent('Library book returned by {student_name}: {details}.','{student_name} यांनी ग्रंथालयातील पुस्तक परत केले आहे: {details}.'),
   Present: parent('Your child {student_name} has been marked present at school today, {date}.','आपला पाल्य {student_name} आज दिनांक {date} रोजी शाळेत उपस्थित झाला/झाली आहे.'),
   Absent: parent('Your child {student_name}, Class {class}-{division}, is absent from school today, {date}. Kindly inform the school of the reason for absence.','आपला पाल्य {student_name} इयत्ता {class}-{division} आज दिनांक {date} रोजी शाळेत अनुपस्थित आहे. कृपया अनुपस्थितीचे कारण शाळेला कळवावे.'),
   Late: parent('Your child {student_name} arrived late at school today, {date}, at {time}.','आपला पाल्य {student_name} आज दिनांक {date} रोजी {time} वाजता शाळेत उशिरा उपस्थित झाला/झाली आहे.'),
@@ -51,6 +56,7 @@ export const automationTemplates = {
   'Staff Daily Summary': ['Staff attendance {date}: Total {total}; Present {present}; Absent {absent}; Late {late}; Leave {leave}; Official Duty {duty}.\n– {school_name}','कर्मचारी उपस्थिती {date}: एकूण {total}; उपस्थित {present}; अनुपस्थित {absent}; उशिरा {late}; रजा {leave}; शासकीय कार्य {duty}.\n– {school_name}'],
 };
 automationTemplates['Saturday School Closed'] = [...automationTemplates['School Closed']];
+for(const [name,source] of Object.entries({'School Dismissal':'School Closed','Fee Paid':'Fee Received','Sports Notice':'Sports Competition','Teacher Attendance':'Staff Daily Summary','Teacher Absent':'Staff Absent','Teacher Late':'Staff Late'}))automationTemplates[name]=[...automationTemplates[source]];
 export const classKey = (year, standard, division) => JSON.stringify([year, standard, division || '']);
 export const draftId = (year, date, studentId) => JSON.stringify([year, date, String(studentId)]);
 export function mergedAutomation(value = {}) { return structuredClone({ ...automationDefaults, ...value, dryRun: true, weekdays: { ...defaultTiming, ...value.weekdays }, saturday: { ...automationDefaults.saturday, ...value.saturday } }); }
@@ -76,9 +82,10 @@ export function daySchedule(date, config) {
   return { ...(weekday === 6 ? config.saturday : config.weekdays), closed: config.weeklyHolidays.includes(weekday), saturday: weekday === 6 };
 }
 export function messageFor(type, fields, config, language) {
+  fields={...fields,teacher_name:fields.teacher_name??fields.staff_name,fee_amount:fields.fee_amount??fields.amount};
   const templates = config.templates[type] || {}, pair = automationTemplates[type];
   if (!pair && !templates.en && !templates.mr) throw Error(`Unknown template: ${type}`);
-  const render = lang => String(templates[lang] ?? pair?.[lang === 'mr' ? 1 : 0] ?? '').replace(/\{([a-z_]+)\}/g, (token, key) => fields[key] === undefined || fields[key] === '' ? token : String(fields[key]));
+  const render = lang => String(templates[lang] ?? pair?.[lang === 'mr' ? 1 : 0] ?? '').replace(/\{\{([a-z_]+)\}\}|\{([a-z_]+)\}/g, (token, doubleKey, singleKey) => {const key=doubleKey||singleKey;return fields[key] === undefined || fields[key] === '' ? token : String(fields[key]);});
   return language === 'both' ? `${render('mr')}\n\n${render('en')}` : render(language === 'mr' ? 'mr' : 'en');
 }
 export function planMessages(events, students, school, config, previous = [], actor = '') {
@@ -101,7 +108,7 @@ export function planMessages(events, students, school, config, previous = [], ac
       for (const channel of channels) {
         const mobile = normalizeParentMobile(channel === 'whatsapp' && recipient.whatsapp ? recipient.whatsapp : recipient.mobile);
         const key = JSON.stringify([event.key, mobile || recipient.id, channel]); if (ids.has(key)) continue;
-        const fields = { school_name: school.schoolName, student_name: student?.name, class: student?.className, division: student?.division || '-', ...event.fields };
+        const fields = { school_name: school.schoolName, student_name: student?.name, student_name_marathi:student?.student_name_mr||student?.name,parent_name:recipient.name, class: student?.className, division: student?.division || '-', ...event.fields };
         const message = messageFor(event.type, fields, config, recipient.language || config.language);
         const missing = message.match(/\{[a-z_]+\}/g) || [];
         jobs.push({ id: crypto.randomUUID(), key, eventKey: event.key, type: event.type, sourceEvent:event, contactId:recipient.id, language:recipient.language||config.language, studentId: student?.id, staffId: event.staffId, studentName: student?.name || event.fields.staff_name || 'Staff summary', recipient: recipient.name, parentMobile: mobile, parentName: recipient.name, message, channel, status: mobile && !missing.length ? 'Queued' : 'Failed', dryRun: true, attempts: 0, failureReason: !mobile ? 'Valid recipient mobile required' : missing.length ? `Missing fields: ${missing.join(', ')}` : 'DRY RUN — not sent', initiatedBy: actor, initiatedAt: new Date().toISOString(), date: event.fields.date });

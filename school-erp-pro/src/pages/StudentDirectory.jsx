@@ -1,4 +1,6 @@
-﻿import { useState } from 'react';
+import {resolveReference} from '../services/studentReference';
+import {readStored} from '../storage';
+import { useState } from 'react';
 import { downloadStudentTemplate, exportStudents } from '../services/excel';
 import { StudentActions } from '../components/StudentActions';
 import { notify } from '../components/Feedback';
@@ -13,7 +15,7 @@ export default function StudentDirectory({ students, visibleStudents, query, set
  const years=[...new Set(students.map(s=>s.academicYear).filter(Boolean))].sort().reverse();
  const filtered=visibleStudents.filter(s=>!year||s.academicYear===year).slice().sort((a,b)=>String(a[sort]||'').localeCompare(String(b[sort]||''),undefined,{numeric:true})||String(a.id).localeCompare(String(b.id)));
  const pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(page,pages-1),shown=filtered.slice(current*size,(current+1)*size);
- const lookup=event=>{event.preventDefault();let id='';try{if(reference.trim().startsWith('schoolerp:student:v1:'))id=decodeURIComponent(reference.trim().slice('schoolerp:student:v1:'.length));}catch{/* malformed references do not match */}const matches=students.filter(s=>id?String(s.id)===id:s.grNo===reference.trim());if(matches.length!==1)return notify('No unique student matches that reference. Check the GR or QR value.');onSelect(matches[0].id);};
+ const lookup=event=>{event.preventDefault();const student=resolveReference(reference,students,readStored('schoolSettings',{}).tenantId,{includeArchived:true});if(!student)return notify('No unique student in this school matches the GR / QR reference.');onSelect(student.id);};
  return <div className="core-page student-directory">
  <PageHeading eyebrow={t('STUDENTS / RECORDS','विद्यार्थी / नोंदी')} title={t('Student Master','विद्यार्थी मास्टर')} description={t('Manage enrollment, family contacts and student history.','प्रवेश, पालक संपर्क आणि विद्यार्थ्यांचा इतिहास व्यवस्थापित करा.')}><div className="student-master-primary-actions"><button className="school-button" aria-label={t('Add student','विद्यार्थी जोडा')} onClick={onCreate}>+ {t('Add Student','विद्यार्थी जोडा')}</button><button className="school-button secondary" onClick={onImport}>{t('Import Excel','Excel आयात')}</button><button className="school-button secondary" onClick={() => downloadStudentTemplate()}>{t('Download Excel Template','Excel नमुना डाउनलोड')}</button><button className="school-button secondary" onClick={() => exportStudents(students,'all-students.xlsx')}>{t('Export Excel','Excel निर्यात')}</button></div></PageHeading>
  <section className="student-master-tools"><span><strong>{students.length}</strong> {showArchived?'inactive / archived':'enrolled'} students · {classes.length} classes</span><div><button onClick={()=>onNavigate('Lifecycle')}>Bulk Promotion / History</button><button onClick={()=>onNavigate('PhotoImport')}>Excel + Photo Folder</button><button onClick={()=>setScanOpen(!scanOpen)} aria-expanded={scanOpen}>Find by QR / GR</button></div></section>

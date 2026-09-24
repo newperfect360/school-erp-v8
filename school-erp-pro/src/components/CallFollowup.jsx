@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {useSharedRecords} from '../backend/useSharedRecords';
 import { useContext, useEffect, useState } from 'react';
 import { CommunicationSession } from '../backend/CommunicationSession';
@@ -19,7 +20,7 @@ export default function CallFollowup({ student, date, callId, onSaved }) {
   const save = async () => {
     if (!actor?.uid || !call || !callOutcomes.includes(outcome)) return notify('Choose a call outcome. A signed-in user is required.');
     try {
-      const historySource = localStorage.getItem(communicationKeys.history), followupSource = localStorage.getItem(communicationKeys.followups);
+      const historySource = schoolStorage.getItem(communicationKeys.history), followupSource = schoolStorage.getItem(communicationKeys.followups);
       const history = readStored(communicationKeys.history, []), followups = readStored(communicationKeys.followups, {});
       if (!history.some(row => row.id === call.id && row.studentId === call.studentId)) throw Error('Call record changed. Reopen history.');
       const nextStatus = outcome === 'Parent Contacted' ? 'Parent Contacted' : ['Medical Reason','Family Reason'].includes(outcome) ? 'Reason Confirmed' : ['No Answer','Busy','Switched Off'].includes(outcome) ? 'No Response' : 'Follow-up Required';
@@ -35,7 +36,7 @@ export default function CallFollowup({ student, date, callId, onSaved }) {
   const changeStatus = async value => {
     if (!actor?.uid || !followupStatuses.includes(value)) return;
     if(connection.shared){const id=student.id+'_'+date+'_followup';const old=sharedHistory.find(r=>r.id===id);const record={...old,id,studentId:student.id,channel:'followup',kind:'followup',attendanceDate:date,followupStatus:value,remarkedBy:actor.uid,remarkedAt:new Date().toISOString()};await saveSharedHistory(old?sharedHistory.map(r=>r.id===id?record:r):[...sharedHistory,record]);return;}
-    try { const source = localStorage.getItem(communicationKeys.followups); commitStoredBatch({ [communicationKeys.followups]: { ...readStored(communicationKeys.followups, {}), [key]: { ...followup, status: value, updatedBy: actor.uid, updatedAt: new Date().toISOString() } } }, { [communicationKeys.followups]: source }); window.dispatchEvent(new Event('communication-history-changed')); } catch (error) { notify(error.message); }
+    try { const source = schoolStorage.getItem(communicationKeys.followups); commitStoredBatch({ [communicationKeys.followups]: { ...readStored(communicationKeys.followups, {}), [key]: { ...followup, status: value, updatedBy: actor.uid, updatedAt: new Date().toISOString() } } }, { [communicationKeys.followups]: source }); window.dispatchEvent(new Event('communication-history-changed')); } catch (error) { notify(error.message); }
   };
   return <div className="call-followup"><label>Follow-up status<select aria-label={`Contact status for ${student.name}`} value={status} onChange={event => changeStatus(event.target.value)}>{followupStatuses.map(value => <option key={value}>{value}</option>)}</select></label>
     <button onClick={() => setOpen(!open)}>Contact History</button>

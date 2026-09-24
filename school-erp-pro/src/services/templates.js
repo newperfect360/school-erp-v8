@@ -1,3 +1,4 @@
+import {studentReference} from './studentReference';
 import {resolveSchoolSettings} from './schoolIdentity';
 import { qrImage } from "../qr.js";
 
@@ -53,7 +54,7 @@ const safeImage = (data, alt) => /^data:image\/(png|jpeg|webp|gif);base64,[a-z0-
 export function templateContext(student, school, extras = {}) {
   school = resolveSchoolSettings(school);
   extras = { emergency_contact: student.emergencyContact || "", ...extras };
-  return { student_name: student.name, student_name_marathi: student.student_name_mr || student.name_mr, gr_number: student.grNo, admission_number: student.admissionNo, roll_number: student.rollNo, standard: student.className, division: student.division, dob: student.dob, parent_name: student.guardianName || student.fatherName || student.motherName, mobile: student.mobile, institution_name: school.sansthaName, school_name: school.schoolName, school_address: school.address, academic_year: student.academicYear || school.academicYear, ...extras, photo: safeImage(student.photo, "Student photo"), school_logo: safeImage(school.logo, "School logo"), qr: student.id ? safeImage(qrImage(`schoolerp:student:v1:${encodeURIComponent(student.id)}`), "Student QR") : "" };
+  return { student_name: student.name, student_name_marathi: student.student_name_mr || student.name_mr, gr_number: student.grNo, admission_number: student.admissionNo, roll_number: student.rollNo, standard: student.className, division: student.division, dob: student.dob, parent_name: student.guardianName || student.fatherName || student.motherName, mobile: student.mobile, institution_name: school.sansthaName, school_name: school.schoolName, school_address: school.address, academic_year: student.academicYear || school.academicYear, ...extras, photo: safeImage(student.photo, "Student photo"), school_logo: safeImage(school.logo, "School logo"), qr: student.id ? safeImage(qrImage(studentReference(student.id,school.tenantId)), "Student QR") : "" };
 }
 export function renderFormat(template, context) {
   const header = '<header>{{school_logo}}<p class="institution">{{institution_name}}</p><h1>{{school_name}}</h1><p>{{school_address}}</p></header>';

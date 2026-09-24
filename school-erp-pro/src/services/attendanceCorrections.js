@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {readStored,commitStoredBatch} from '../storage';
 import {submissionKey,studentStatuses} from './attendanceAutomation';
 
@@ -5,7 +6,7 @@ export function correctSubmittedAttendance(snapshot,studentId,patch,reason,actor
   if(!actor?.uid || !['Super Admin','SUPER_ADMIN','Admin','ADMIN','Headmaster','HEADMASTER'].includes(actor.role))throw Error('Management permission required for a finalized attendance correction.');
   if(!reason.trim())throw Error('A correction reason is required.');
   const keys=[submissionKey,'erp_pro_attendance','erp_pro_message_jobs'];
-  const expected=Object.fromEntries(keys.map(key=>[key,localStorage.getItem(key)]));
+  const expected=Object.fromEntries(keys.map(key=>[key,schoolStorage.getItem(key)]));
   const submissions=readStored(submissionKey,[]),index=submissions.findIndex(row=>row.id===snapshot.id);
   if(index<0 || JSON.stringify(submissions[index])!==JSON.stringify(snapshot))throw Error('Attendance changed. Reopen the correction form.');
   const previous=snapshot.rows.find(row=>row.id===studentId);

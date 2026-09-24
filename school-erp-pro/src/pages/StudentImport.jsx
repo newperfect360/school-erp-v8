@@ -1,9 +1,11 @@
+import {schoolStorage} from '../backend/demoClient';
 import {useSharedRecords} from '../backend/useSharedRecords';
 import {enrollment,academicSnapshot} from '../services/studentLifecycle';
 import {suggestMarathiName} from "../services/bilingualStudent";
 import {normalizeStudentRow} from "../services/excel";
 import { useLanguage } from "../design/language";
-import { useState } from "react";
+import { useState, useContext } from "react";
+import {CommunicationSession} from '../backend/CommunicationSession';
 import { readStored, commitStoredBatch } from "../storage";
 import { studentColumns, parseStudentFile, downloadStudentTemplate, exportStudents, exportRows } from "../services/excel";
 import { reviewStudentImport, applyStudentImport, updateFields } from "../services/studentImport";
@@ -13,6 +15,9 @@ import {matchPhotos,imageData} from '../services/photoImport';
 
 export default function StudentImport({ onDone, onBack, onNavigate }) {
   const { t } = useLanguage();
+  const session=useContext(CommunicationSession);
+  const tenantId=session?.schoolId;
+  const [importScope,setImportScope]=useState({academicYear:readStored('schoolSettings',{}).academicYear||'2026-27',className:'',division:''});
   const [sharedStudents,saveSharedStudents,connection]=useSharedRecords("students","erp_pro_students");
   const [file, setFile] = useState(null), [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("create"), [fields, setFields] = useState(updateFields);
@@ -42,13 +47,15 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
   const upload = async event => {
     const uploadFile = event.target.files?.[0]; event.target.value = ""; if (!uploadFile) return;
     setLoading(true); invalidate(); setChoices({}); setOverrides({}); setFile(null); setPage(0);
-    try { const parsed = await parseStudentFile(uploadFile); if (!parsed.rows.length) throw new Error("No student rows found."); setFile({ ...parsed, name: uploadFile.name }); setOverrides({}); }
+    try { const parsed = await parseStudentFile(uploadFile); if (!parsed.rows.length) throw new Error("No student rows found."); setFile({ ...parsed, name: uploadFile.name }); setPhotoField(Object.values(parsed.mapping).includes('photoFileName')?'photoFileName':'photoNumber'); setOverrides({}); }
     catch (error) { notify(error.message); } finally { setLoading(false); }
   };
   const suggestedOverrides = Object.fromEntries((file?.rows||[]).map((row,index)=>{const student=normalizeStudentRow(row,file.mapping);return [index,overrides[index]??(!student.student_name_mr?{student_name_mr:suggestMarathiName(student.name)||''}:{})]}));
   const validate = () => {
     try {
-      const source = connection.shared?JSON.stringify(sharedStudents):localStorage.getItem("erp_pro_students");
+      if(tenantId&&(!importScope.academicYear||!importScope.className||!importScope.division))throw Error('Select academic year, class and division before validating the import.');
+      if(tenantId)for(const row of file.rows){const mapped=normalizeStudentRow(row,file.mapping);for(const key of ['academicYear','className','division'])if(mapped[key]&&String(mapped[key])!==importScope[key])throw Error('Excel row does not match the selected '+key+'. Import one selected class/division/year at a time.');}
+      const source = connection.shared?JSON.stringify(sharedStudents):schoolStorage.getItem("erp_pro_students");
       const existing = source === null ? [] : JSON.parse(source);
       if (!Array.isArray(existing)) throw new Error("Student storage is invalid. Restore a reviewed backup first.");
       setReview({ source, existing, results: reviewStudentImport(file.rows, file.mapping, existing, { mode, fields, overrides: suggestedOverrides }) }); resetPhotos();
@@ -61,7 +68,7 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
       const change = photos.length ? {...photoPlan.change,students:photoPlan.change.students.map(s=>({...s}))} : applyStudentImport(review.existing, review.results, choices);
       const attached=photos.length?photoPlan.rows.filter(r=>photoChoices[r.index]==='attach'&&!r.error):[];
       const photoMap=new Map(attached.map(r=>[r.student.id,r.photo]));
-      change.students=change.students.map(s=>photoMap.has(s.id)?{...s,photo:photoMap.get(s.id),photoUpdatedAt:new Date().toISOString()}:s);
+      change.students=change.students.map(s=>{const result=photoMap.has(s.id)?{...s,photo:photoMap.get(s.id),photoUpdatedAt:new Date().toISOString()}:s;return tenantId?{...result,schoolId:tenantId,tenantId}:result;});
       if (!change.added && !change.updated) throw new Error("No rows are selected for import/update.");
       const timestamp = new Date().toISOString(), id = crypto.randomUUID();
       const history = { id, fileName: file.name, importedAt: timestamp, successCount: change.added, updatedCount: change.updated, skippedCount: change.skipped, totalRows: file.rows.length, mode };
@@ -87,6 +94,7 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
   return <div className="core-page import-page">
     <button className="school-link" onClick={onBack}>← Student Master</button>
     <PageHeading eyebrow="STUDENT RECORDS" title="Student Excel Import" description="Upload → map columns → preview → validate → review changes → confirm. Nothing is saved before confirmation." />
+    {tenantId&&<section className="school-panel form-grid"><label>School<input readOnly value={`${readStored('schoolSettings',{}).schoolName||tenantId} / ${session.udise||tenantId}`}/></label>{Object.entries({academicYear:'Import academic year',className:'Import class',division:'Import division'}).map(([key,label])=><label key={key}>{label}<input value={importScope[key]} onChange={e=>{setImportScope({...importScope,[key]:e.target.value});invalidate();}}/></label>)}</section>}
     <fieldset className="import-workflow-fields" disabled={photoBusy}>
     <ol className="import-progress" aria-label="Import steps">{["Download template", "Upload & preview", "Column mapping", "Validate & Marathi review", "Duplicate & photo check", "Confirm import"].map((step,i)=><li key={step}><b>{i+1}</b>{step}</li>)}</ol><section className="school-panel workflow-panel"><div className="import-actions">
       <button className="school-button secondary" onClick={() => downloadStudentTemplate(columns)}>{t("Download Student Excel Template")}</button>
@@ -106,7 +114,7 @@ export default function StudentImport({ onDone, onBack, onNavigate }) {
         })}</tbody></table></div><div className="import-actions"><button disabled={!page} onClick={() => setPage(page - 1)}>Previous</button><span>Page {page + 1} / {Math.ceil(file.rows.length / 25)}</span><button disabled={(page + 1) * 25 >= file.rows.length} onClick={() => setPage(page + 1)}>Next</button></div>
         <div className="import-actions"><button className="school-button secondary" disabled={!review} onClick={() => exportRows(results.map(r => ({ Row: r.rowNumber, GR: r.student.grNo, Errors: r.errors.join("; "), Warnings: r.warnings.join("; "), Duplicate: r.duplicate?.grNo || "" })), "student-import-errors.xlsx")}>{t("Download Error Report")}</button><button disabled={!review} onClick={() => { setChoices(Object.fromEntries(results.filter(r => r.errors.length || r.duplicate).map(r => [r.index, "skip"]))); resetPhotos(); }}>Skip all errors and duplicates</button></div>
         <section className="combined-photo-import"><h3>Excel + Photo Folder</h3><p>Optional: match photos to the selected Excel students before saving. Example: Photo Number 1001 matches 1001.jpg. No names or phone numbers are used to match.</p>
-          <div className="photo-upload-controls"><label>Photo folder with Excel<input aria-label="Photo folder with Excel" type="file" webkitdirectory="" multiple onChange={e=>{setPhotos([...e.target.files]);resetPhotos()}}/></label><label>Or select photos with Excel<input aria-label="Photos with Excel" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>{setPhotos([...e.target.files]);resetPhotos()}}/></label><label>Match photo filename to<select aria-label="Excel photo matching field" value={photoField} onChange={e=>{setPhotoField(e.target.value);resetPhotos()}}>{[['photoNumber','Photo Number'],['grNo','GR Number'],['admissionNo','Admission Number'],['id','Student ID']].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label></div>
+          <div className="photo-upload-controls"><label>Photo folder with Excel<input aria-label="Photo folder with Excel" type="file" webkitdirectory="" multiple onChange={e=>{setPhotos([...e.target.files]);resetPhotos()}}/></label><label>Or select photos with Excel<input aria-label="Photos with Excel" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>{setPhotos([...e.target.files]);resetPhotos()}}/></label><label>Match photo filename to<select aria-label="Excel photo matching field" value={photoField} onChange={e=>{setPhotoField(e.target.value);resetPhotos()}}>{[['photoFileName','Photo File Name'],['photoNumber','Photo Number'],['grNo','GR Number'],['admissionNo','Admission Number'],['id','Student ID']].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label></div>
           <p>{photos.length} photos selected · JPG / PNG / WebP · up to 5 MB each, 500 files. Missing photos may be added later.</p><button disabled={!photos.length||!ready} onClick={previewPhotos}>{photoBusy?'Checking photos…':'Preview Excel photo matches'}</button>{photos.length>0&&<button onClick={()=>{setPhotos([]);resetPhotos()}}>Remove selected photos</button>}
           {photoPlan&&<><p role="status">{photoPlan.rows.filter(r=>!r.error).length} matched · {photoPlan.rows.filter(r=>r.error).length} invalid / unmatched · {photoPlan.missing} imported students without a matched photo</p><div className="table-scroll"><table><thead><tr><th>File</th><th>Student / GR</th><th>Photo</th><th>Match result</th><th>Photo action</th></tr></thead><tbody>{photoPlan.rows.map(r=><tr key={r.index}><td>{r.name}</td><td>{r.student?.name} · {r.student?.grNo}</td><td>{r.photo&&!r.error&&<img src={r.photo} alt={r.student.name} width="40" height="48"/>}</td><td>{r.error||(r.existing?'Existing photo: confirm replacement':'Matched')}</td><td><select aria-label={'Photo action '+r.name} value={photoChoices[r.index]} onChange={e=>{setPhotoChoices({...photoChoices,[r.index]:e.target.value});setAcknowledged(false)}}><option value="review">Review required</option><option value="skip">Skip photo</option>{!r.error&&<option value="attach">{r.existing?'Replace existing photo':'Attach photo'}</option>}</select></td></tr>)}</tbody></table></div></>}
           <button className="school-link" onClick={()=>onNavigate('PhotoImport')}>Open photo-only importer for already saved students →</button>

@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 // Read-only pre-cleanup archive. This never clears records or grants reset permission.
 const ownedKey = key => key === 'schoolSettings' || /^erp_pro_/.test(key);
 const sensitiveKey = key => /password|token|credential|users/i.test(key);
@@ -24,11 +25,11 @@ async function readAssets() {
 
 function recordsSnapshot() {
   const records = {}, excludedKeys = [];
-  for (const key of Object.keys(localStorage).sort()) {
+  for (const key of schoolStorage.keys().sort()) {
     if (!ownedKey(key)) continue;
     if (sensitiveKey(key)) { excludedKeys.push(key); continue; }
     // Preserve raw strings, including malformed records, rather than silently discarding them.
-    records[key] = localStorage.getItem(key);
+    records[key] = schoolStorage.getItem(key);
   }
   return { records, excludedKeys };
 }

@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 
 export const studentColumns = [
+  ["Student Name English", "studentNameEnglish"], ["Surname English", "surnameEnglish"], ["Photo File Name", "photoFileName"], ["Caste", "caste"], ["Religion", "religion"],
   ["Sr No", "srNo"], ["Photo Number", "photoNumber"], ["Father Name Marathi", "father_name_mr"], ["Mother Name Marathi", "mother_name_mr"], ["Address Marathi", "address_mr"], ["Student Full Name", "name"], ["First Name", "firstName"], ["Middle Name", "middleName"], ["Last Name", "lastName"],
   ["Student Name Marathi", "student_name_mr"], ["Admission Number", "admissionNo"],
   ["Standard", "className"], ["Division", "division"], ["Roll Number", "rollNo"], ["GR Number", "grNo"], ["Date of Birth", "dob"],
@@ -13,6 +14,9 @@ export const studentColumns = [
 ];
 
 const aliases = {
+  studentNameEnglish: ['studentnameenglish'],
+  fatherName: ['fathernameenglish','fathername','वडिलांचेनाव'],
+  motherName: ['mothernameenglish','mothername','आईचेनाव'],
   emergencyContact: ['emergencycontact','emergencymobile','emergencycontactnumber'],
   healthNotes: ["healthnote", "healthnotes", "medicalnote", "medicalnotes"],
   student_name_mr: ["marathiname", "studentnamemarathi", "विद्यार्थीनावमराठी"],
@@ -23,8 +27,6 @@ const aliases = {
   grNo: ["grnumber", "grno", "generalregister", "gr", "जीआरनंबर"],
   dob: ["dateofbirth", "dob", "birthdate", "जन्मदिनांक"],
   mobile: ["parentmobile", "parentguardianmobile", "mobile", " मोबाईल"],
-  fatherName: ["fathername", "वडिलांचेनाव"],
-  motherName: ["mothername", "आईचेनाव"],
   address: ["address", "पत्ता"],
   gender: ["gender", "लिंग"],
   bloodGroup: ["bloodgroup", "रक्तगट"],
@@ -69,6 +71,7 @@ export function normalizeStudentRow(row, mapping) {
   const student = {};
   Object.entries(mapping).forEach(([header, field]) => { if (studentColumns.some(([, key]) => key === field)) student[field] = clean(row[header]).replace(/^'(?=[=+@-])/, ""); });
   if (!student.name && (student.firstName || student.lastName)) student.name = [student.firstName, student.middleName, student.lastName].filter(Boolean).join(" ");
+  if (!student.name && student.studentNameEnglish) student.name = [student.studentNameEnglish,student.fatherName,student.surnameEnglish].filter(Boolean).join(' ');
   return student;
 }
 

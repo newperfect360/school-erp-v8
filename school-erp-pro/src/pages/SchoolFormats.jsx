@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {academicSnapshot} from '../services/studentLifecycle';
 import { useLanguage } from "../design/language";
 import StudentLookup from "../components/StudentLookup";
@@ -22,7 +23,7 @@ export default function SchoolFormats({ initialType = "Bonafide Certificate", se
   const frame = useRef(null);
   const template = templates.find(item => item.type === type) || defaultFormat(type);
   const targets = () => groupFormats.includes(type) ? [{ name: "School group", groupIds: selected }] : students.filter(s => selected.includes(s.id));
-  const sourceSnapshot = () => JSON.stringify(["erp_pro_students", "erp_pro_results", "erp_pro_attendance", "erp_pro_document_templates", "schoolSettings"].map(key => localStorage.getItem(key)));
+  const sourceSnapshot = () => JSON.stringify(["erp_pro_students", "erp_pro_results", "erp_pro_attendance", "erp_pro_document_templates", "schoolSettings"].map(key => schoolStorage.getItem(key)));
   const build = (student, number = "PREVIEW") => {
     const values = { ...extras, certificate_number: number, last_class: extras.last_class || student.className, previous_school: extras.previous_school || student.previousSchool, admission_date: extras.admission_date || student.admissionDate, emergency_contact: extras.emergency_contact || student.emergencyContact || student.mobile, medical_note: extras.medical_note || student.healthNotes };
     if (["Marksheet", "Annual Result", "Progress Card"].includes(type)) {
@@ -49,7 +50,7 @@ export default function SchoolFormats({ initialType = "Bonafide Certificate", se
     if (previewSource !== sourceSnapshot()) return notify("School records changed. Preview again before generating.");
     if (type === "Leaving Certificate" && ["reason", "last_class", "progress", "conduct"].some(k => !extras[k].trim())) return notify("Leaving reason, last class, progress and conduct are required.");
     try {
-      const source = localStorage.getItem("erp_pro_certificates");
+      const source = schoolStorage.getItem("erp_pro_certificates");
       const current = source === null ? [] : JSON.parse(source);
       const batch = targets().map(student => {
         const id = crypto.randomUUID(), certificateNo = `${type === "Leaving Certificate" ? "LC" : "DOC"}-${extras.issue_date.replaceAll("-", "")}-${id.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
@@ -59,7 +60,7 @@ export default function SchoolFormats({ initialType = "Bonafide Certificate", se
       if(type==='Leaving Certificate'&&confirmExit){
         if(extras.issue_date>localDate())throw Error('LC issue date cannot be in the future.');
         const master=readStored('erp_pro_students',[]),movements=readStored('erp_pro_student_movements',[]);
-        expected.erp_pro_students=localStorage.getItem('erp_pro_students');expected.erp_pro_student_movements=localStorage.getItem('erp_pro_student_movements');
+        expected.erp_pro_students=schoolStorage.getItem('erp_pro_students');expected.erp_pro_student_movements=schoolStorage.getItem('erp_pro_student_movements');
         entries.erp_pro_students=master.map(s=>{const cert=batch.find(c=>c.studentId===s.id);return cert?{...s,status:'TC/LC Issued',lcNumber:cert.certificateNo,lcIssueDate:cert.issueDate,leavingDate:s.leavingDate||cert.issueDate,leavingReason:s.leavingReason||extras.reason}:s});
         entries.erp_pro_academic_history=[...readStored('erp_pro_academic_history',[]),...master.filter(s=>batch.some(c=>c.studentId===s.id)).map(s=>({id:crypto.randomUUID(),...academicSnapshot(s,readStored('erp_pro_results',[]),readStored('erp_pro_attendance',{}),'LC Issued',extras.issue_date)}))];
         entries.erp_pro_student_movements=[...movements,...batch.map(c=>({id:crypto.randomUUID(),studentId:c.studentId,studentName:c.name,action:'LC Issued',type:'LC Issued',oldValue:{status:master.find(s=>s.id===c.studentId)?.status||'Active'},newValue:{status:'TC/LC Issued',lcNumber:c.certificateNo},actor:'local-review',createdAt:new Date().toISOString(),reason:extras.reason}))];

@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import { localDate, readStored, writeStored } from "../storage";
 
 export function recordAudit(action, details = {}) {
@@ -14,9 +15,9 @@ export function recordAudit(action, details = {}) {
 
 export function createBackup() {
   const data = {};
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index);
-    if (key) data[key] = localStorage.getItem(key);
+  for (let index = 0; index < schoolStorage.length; index += 1) {
+    const key = schoolStorage.key(index);
+    if (key) data[key] = schoolStorage.getItem(key);
   }
   return { version: 1, createdAt: new Date().toISOString(), data };
 }

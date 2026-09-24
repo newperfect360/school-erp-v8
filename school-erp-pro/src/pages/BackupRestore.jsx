@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import { useLanguage } from "../design/language";
 import CleanupBackup from '../components/CleanupBackup';
 import { useState } from "react";
@@ -11,7 +12,7 @@ const cleanSettings = data => Object.fromEntries(Object.entries(data).filter(([k
 export default function BackupRestore() {
   const { t } = useLanguage();
   const [preview, setPreview] = useState(null), [confirmed, setConfirmed] = useState(false);
-  const download = () => { const data = {}; for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (allowed(key)) { const value = JSON.parse(localStorage.getItem(key)); data[key] = JSON.stringify(key === "schoolSettings" ? cleanSettings(value) : value); } } const url = URL.createObjectURL(new Blob([JSON.stringify({ version: 2, createdAt: new Date().toISOString(), includesBinaryAssets: false, data }, null, 2)], { type: "application/json" })); const a = document.createElement("a"); a.href = url; a.download = "school-records-backup.json"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+  const download = () => { const data = {}; for (let i = 0; i < schoolStorage.length; i++) { const key = schoolStorage.key(i); if (allowed(key)) { const value = JSON.parse(schoolStorage.getItem(key)); data[key] = JSON.stringify(key === "schoolSettings" ? cleanSettings(value) : value); } } const url = URL.createObjectURL(new Blob([JSON.stringify({ version: 2, createdAt: new Date().toISOString(), includesBinaryAssets: false, data }, null, 2)], { type: "application/json" })); const a = document.createElement("a"); a.href = url; a.download = "school-records-backup.json"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
   const upload = async event => {
     const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; setPreview(null); setConfirmed(false);
     try {
@@ -26,7 +27,7 @@ export default function BackupRestore() {
         if (key === "schoolSettings" && Array.isArray(incoming)) throw new Error("School settings must be an object.");
         if (Array.isArray(incoming) && incoming.some(row => !row || typeof row !== "object" || Array.isArray(row) || !row.id)) throw new Error(`${key}: every imported record needs an ID.`);
         if (key === "schoolSettings") incoming = cleanSettings(incoming);
-        const source = localStorage.getItem(key), current = source === null ? null : JSON.parse(source);
+        const source = schoolStorage.getItem(key), current = source === null ? null : JSON.parse(source);
         if (key === "erp_pro_students") {
           if (current !== null && !Array.isArray(current)) throw new Error("Existing Student Master is invalid; restore stopped.");
           const records = [...(current || [])], ids = new Set(records.map(row => String(row.id)));

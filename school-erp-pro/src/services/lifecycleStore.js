@@ -1,10 +1,11 @@
+import {schoolStorage} from '../backend/demoClient';
 import {readStored,commitStoredBatch} from '../storage';
 import {planMovement,lifecycleActive} from './studentLifecycle';
 import {isSharedKey,sharedSnapshot,sharedOperationalEnabled} from '../backend/sharedReadCache';
 import {createFirebaseRepository} from '../backend/firebaseRepository';
 import {schoolFirebase} from '../backend/firebaseClient';
 export const lifecycleKeys=['erp_pro_students','erp_pro_student_movements','erp_pro_academic_history','erp_pro_results','erp_pro_attendance','erp_pro_academic_years','erp_pro_academic_context'];
-export const lifecycleSource=()=>Object.fromEntries(lifecycleKeys.map(k=>[k,isSharedKey(k)?sharedSnapshot(k):localStorage.getItem(k)]));
+export const lifecycleSource=()=>Object.fromEntries(lifecycleKeys.map(k=>[k,isSharedKey(k)?sharedSnapshot(k):schoolStorage.getItem(k)]));
 export function previewMovements(ids,change){
  const source=lifecycleSource(),students=readStored('erp_pro_students',[]),results=readStored('erp_pro_results',[]),attendance=readStored('erp_pro_attendance',{});
  if(!ids.length)throw Error('Select at least one student.');

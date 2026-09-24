@@ -1,8 +1,9 @@
+import {schoolStorage} from '../backend/demoClient';
 import {isSharedKey,sharedSnapshot,sharedOperationalEnabled} from '../backend/sharedReadCache';
 export const yearKey='erp_pro_academic_years',contextKey='erp_pro_academic_context';
 export function normalizeYear(value){const m=/^(\d{4})[-–](\d{2}|\d{4})$/.exec(String(value||'').trim());if(!m)return '';const y=Number(m[1]);return Number(m[2])===(y+1)%100||Number(m[2])===y+1?`${y}-${String(y+1).slice(-2)}`:'';}
 export function defaultYear(date=new Date()){const y=date.getMonth()>=5?date.getFullYear():date.getFullYear()-1;return `${y}-${String(y+1).slice(-2)}`;}
-const read=(key,fallback)=>{try{return JSON.parse(isSharedKey(key)?sharedSnapshot(key):localStorage.getItem(key))||fallback}catch{return fallback}};
+const read=(key,fallback)=>{try{return JSON.parse(isSharedKey(key)?sharedSnapshot(key):schoolStorage.getItem(key))||fallback}catch{return fallback}};
 export function currentAcademicYear(){if(sharedOperationalEnabled)return normalizeYear(read(yearKey,[]).find(y=>y.current)?.id)||defaultYear();return normalizeYear(read(contextKey,{}).current)||normalizeYear(read('schoolSettings',{}).academicYear)||defaultYear();}
 export function academicYears(){const saved=read(yearKey,[]),current=currentAcademicYear();return saved.some(y=>y.id===current)?saved:[{id:current,startDate:`${current.slice(0,4)}-06-01`,endDate:`${Number(current.slice(0,4))+1}-05-31`,status:'Open',implicit:true},...saved];}
 export function yearForDate(date){const matches=academicYears().filter(y=>date>=y.startDate&&date<=y.endDate);if(matches.length===1)return matches[0].id;if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return '';const y=Number(date.slice(0,4))-(Number(date.slice(5,7))<6?1:0);return `${y}-${String(y+1).slice(-2)}`;}

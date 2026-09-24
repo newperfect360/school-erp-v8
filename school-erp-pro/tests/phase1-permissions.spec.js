@@ -1,0 +1,34 @@
+import {test,expect} from '@playwright/test';
+import {nav} from './portal-navigation.mjs';
+
+test('school administrator saves granular permissions and opens server audit history',async({page})=>{
+ await page.goto('/login');
+ if(!page.url().startsWith('http://127.0.0.1:5398/'))throw Error('Use isolated QA server on port 5398.');
+ await page.getByRole('button',{name:'EN',exact:true}).click();
+ await page.getByLabel('Username',{exact:true}).fill('admin');
+ await page.getByLabel('Password',{exact:true}).fill('admin1234');
+ await page.getByRole('button',{name:'Login',exact:true}).click();
+ await expect(page.locator('.portal-shell')).toBeVisible();
+ await nav(page,'AccessSetup');
+ await page.getByRole('button',{name:'+ Add User',exact:true}).click();
+ const username='test-clerk-'+Date.now();
+ await page.getByLabel('Full Name',{exact:true}).fill('TEST Permission Clerk');
+ await page.getByLabel('Username',{exact:true}).fill(username);
+ await page.getByLabel('Email',{exact:true}).fill(username+'@example.invalid');
+ await page.getByLabel('Temporary Password',{exact:true}).fill('TEST-permission-only!');
+ await page.getByLabel('Role',{exact:true}).selectOption('CLERK');
+ const actions=page.getByRole('group',{name:'Student actions (requires Students module write access)'});
+ await actions.getByLabel('archive',{exact:true}).uncheck();
+ await actions.getByLabel('restore',{exact:true}).uncheck();
+ await actions.getByLabel('add',{exact:true}).uncheck();
+ await page.getByRole('button',{name:'Save User',exact:true}).click();
+ await expect(page.locator('.workflow-panel p[role="status"]')).toContainText('Development account saved');
+ const row=page.getByRole('row').filter({hasText:username});
+ await row.getByRole('button',{name:'Edit / Permissions',exact:true}).click();
+ await expect(actions.getByLabel('edit',{exact:true})).toBeChecked();
+ await expect(actions.getByLabel('archive',{exact:true})).not.toBeChecked();
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await page.getByRole('button',{name:'View server audit history',exact:true}).click();
+ await expect(page.locator('details')).toContainText('USER_SAVE_PASSWORD_RESET');
+ await expect(page.locator('details')).not.toContainText('TEST-permission-only!');
+});

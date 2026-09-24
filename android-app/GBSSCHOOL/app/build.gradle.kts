@@ -28,6 +28,7 @@ android {
 
     buildTypes {
         debug {
+            versionNameSuffix = "-perfectedu-demo"
             buildConfigField("boolean", "DEV_ADMIN_LOGIN", "true")
         }
         release {

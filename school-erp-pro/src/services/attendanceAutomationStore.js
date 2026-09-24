@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {sharedOperationalEnabled} from '../backend/sharedReadCache';
 import { readStored, commitStoredBatch, localDate } from '../storage';
 import { lifecycleActive } from './studentLifecycle';
@@ -24,7 +25,7 @@ export function reviewAttendance(year, standard, division, date) {
     if (['Permission Leave','Early Leave'].includes(row.status) && !(row.outTime || row.arrivalTime)) throw Error(`Record out time for ${row.name}.`);
     if (['Permission Leave','Early Leave'].includes(row.status) && !row.reason?.trim()) throw Error(`Record the permission reason for ${row.name}.`);
   }
-  const expected = Object.fromEntries(['erp_pro_students','erp_pro_attendance','erp_pro_attendance_years',draftKey,submissionKey,'erp_pro_message_jobs',automationKey,'schoolSettings'].map(key => [key, localStorage.getItem(key)]));
+  const expected = Object.fromEntries(['erp_pro_students','erp_pro_attendance','erp_pro_attendance_years',draftKey,submissionKey,'erp_pro_message_jobs',automationKey,'schoolSettings'].map(key => [key, schoolStorage.getItem(key)]));
   return { year, standard, division, date, rows, expected, groupKey: classKey(year, standard, division), fingerprint: JSON.stringify(rows.map(compactRow)) };
 }
 const compactRow = row => Object.fromEntries(['id','status','arrivalTime','outTime','reason','remark'].map(key => [key,row[key] || '']));
@@ -65,7 +66,7 @@ export function prepareAutomationDue(now = new Date(), actor = 'scheduler-previe
     const count = status => staff.rows.filter(row=>row.status===status).length;
     events.push({type:'Staff Daily Summary',staff:true,key:`staff-summary:${date}`,fields:{date,total:staff.rows.length,present:count('Present'),absent:count('Absent'),late:count('Late'),leave:count('On Leave')+count('Half Day')+count('Early Leave'),duty:count('Official Duty')}});
   }
-  const source = localStorage.getItem('erp_pro_message_jobs'), previous = readStored('erp_pro_message_jobs', []);
+  const source = schoolStorage.getItem('erp_pro_message_jobs'), previous = readStored('erp_pro_message_jobs', []);
   const jobs = planMessages(events, students, readStored('schoolSettings', {}), config, previous, actor);
   if (jobs.length !== previous.length) commitStoredBatch({ erp_pro_message_jobs: jobs }, { erp_pro_message_jobs: source });
   return jobs.length - previous.length;

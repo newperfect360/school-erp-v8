@@ -1,9 +1,7 @@
 import Icon from "../components/Icon";
-import {officialIdentity} from '../services/schoolIdentity';
 import { useLanguage } from "./language";
 
 export function SchoolMark({ logo, large = false }) {
-  logo = logo || officialIdentity.logo;
   return <div className={`school-seal${large ? " large" : ""}`}>{logo ? <img src={logo} alt="School logo" /> : null}</div>;
 }
 

@@ -1,0 +1,122 @@
+import {test,expect} from '@playwright/test';
+import {nav} from './portal-navigation.mjs';
+import * as XLSX from 'xlsx';
+import fs from 'node:fs/promises';
+test.beforeEach(async({page})=>{
+ await page.goto('/login');await page.getByRole('button',{name:'EN',exact:true}).click();
+ await page.getByLabel('Username',{exact:true}).fill('admin');await page.getByLabel('Password',{exact:true}).fill('admin1234');await page.getByRole('button',{name:'Login',exact:true}).click();
+ await expect(page.locator('.portal-shell')).toBeVisible();
+ if(!page.url().startsWith('http://127.0.0.1:5398/'))throw Error('This suite requires the isolated demo QA server on 5398.');
+ await page.evaluate(async()=>{const client=await import(performance.getEntriesByType('resource').filter(r=>r.name.includes('/src/backend/demoClient.js')).at(-1).name);window.TEST_STORAGE=client.schoolStorage;const entries=Object.fromEntries(client.schoolStorage.keys().filter(k=>client.demoKey(k)).map(k=>[k,null]));if(Object.keys(entries).length)client.demoCommit(entries);});
+
+});
+const read=(page,key)=>page.evaluate(k=>JSON.parse(window.TEST_STORAGE.getItem(k)||'[]'),key);
+test('TEST teacher actual create, invalid input, edit, search, Excel export and delete',async({page})=>{
+ await nav(page,'Teachers');await page.getByRole('button',{name:'Save Teacher',exact:true}).click();expect(await read(page,'erp_pro_teachers')).toHaveLength(0);
+ for(const [key,value]of Object.entries({name:'TEST शिक्षक Patil',subject:'गणित',mobile:'bad'}))await page.locator(`input[name=${key}]`).fill(value);
+ await page.getByRole('button',{name:'Save Teacher',exact:true}).click();expect(await read(page,'erp_pro_teachers')).toHaveLength(0);
+ await page.locator('input[name=mobile]').fill('9000000101');await page.getByRole('button',{name:'Save Teacher',exact:true}).click();
+ const created=(await read(page,'erp_pro_teachers'))[0];expect(created.name).toBe('TEST शिक्षक Patil');
+ await page.getByRole('button',{name:'Edit',exact:true}).click();await page.locator('input[name=subject]').fill('TEST विज्ञान');await page.getByRole('button',{name:'Save Teacher',exact:true}).click();
+ expect(await read(page,'erp_pro_teachers')).toHaveLength(1);expect((await read(page,'erp_pro_teachers'))[0]).toMatchObject({id:created.id,subject:'TEST विज्ञान'});
+ await page.getByLabel('Search teachers').fill('missing');await expect(page.locator('tbody tr')).toHaveCount(0);await page.getByLabel('Search teachers').fill('शिक्षक');await expect(page.locator('tbody tr')).toHaveCount(1);
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export Excel',exact:true}).click();const wb=XLSX.read(await fs.readFile(await(await download).path()));expect(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])[0].subject).toBe('TEST विज्ञान');
+ page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Delete',exact:true}).click();expect(await read(page,'erp_pro_teachers')).toHaveLength(1);
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete',exact:true}).click();expect(await read(page,'erp_pro_teachers')).toHaveLength(0);
+});
+for(const [module,key] of [['Staff','erp_pro_staff'],['Notices','erp_pro_notices']])test(`TEST ${module} create/edit/delete/search/export preserve stable ID`,async({page})=>{
+ await nav(page,module);
+ const panel=module==='Staff'?page.locator('.workflow-panel').filter({has:page.getByLabel('Employee ID',{exact:true})}):page.locator('.workflow-panel').first();
+ const fields=panel.locator('.form-grid input');await fields.nth(0).fill('TEST '+module);await fields.nth(1).fill('TEST मराठी नोंद');await panel.getByRole('button',{name:'नोंद जतन करा',exact:true}).click();
+ const original=(await read(page,key))[0];expect(original).toBeTruthy();await page.locator('.record-card').getByRole('button',{name:'Edit',exact:true}).click();await fields.nth(1).fill('TEST सुधारित');await panel.getByRole('button',{name:'नोंद जतन करा',exact:true}).click();
+ const updated=await read(page,key);expect(updated).toHaveLength(1);expect(updated[0].id).toBe(original.id);expect(Object.values(updated[0])).toContain('TEST सुधारित');
+ await page.locator('.module-search').fill('missing');await expect(page.locator('.record-card')).toHaveCount(0);await page.locator('.module-search').fill('TEST');await expect(page.locator('.record-card')).toHaveCount(1);
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export Excel',exact:true}).click();expect((await fs.readFile(await(await download).path())).length).toBeGreaterThan(100);
+ page.once('dialog',d=>d.accept());await page.locator('.record-card').getByRole('button',{name:'Delete',exact:true}).click();expect(await read(page,key)).toHaveLength(0);
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+test('TEST fees student linkage, money validation, duplicate receipt and Unicode Excel',async({page})=>{
+ await nav(page,'Students');await page.getByRole('button',{name:'Add student',exact:true}).click();
+ for(const [key,value]of Object.entries({name:'TEST विद्यार्थी',grNo:'TEST-FEE-1',className:'8',division:'A',academicYear:'2026-27',fatherMobile:'9000000101'}))await page.locator(`input[name=${key}]`).fill(value);
+ await page.getByRole('button',{name:'Save Student',exact:true}).click();const student=(await read(page,'erp_pro_students'))[0];
+ await nav(page,'Fees');await page.getByLabel('Student',{exact:true}).selectOption(student.id);
+ for(const [key,value]of Object.entries({type:'TEST शुल्क',total:'100',paid:'101',receipt:'TEST-REC-1'}))await page.getByLabel(key,{exact:true}).fill(value);
+ await page.getByRole('button',{name:'Save Fee Record',exact:true}).click();expect(await read(page,'erp_pro_fee_ledger')).toHaveLength(0);
+ await page.getByLabel('paid',{exact:true}).fill('75.25');await page.getByRole('button',{name:'Save Fee Record',exact:true}).click();expect((await read(page,'erp_pro_fee_ledger'))[0]).toMatchObject({studentId:student.id,paid:75.25});
+ for(const [key,value]of Object.entries({total:'100',paid:'75',receipt:'TEST-REC-1'}))await page.getByLabel(key,{exact:true}).fill(value);
+ await page.getByRole('button',{name:'Save Fee Record',exact:true}).click();expect(await read(page,'erp_pro_fee_ledger')).toHaveLength(1);
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export fee ledger',exact:true}).click();const wb=XLSX.read(await fs.readFile(await(await download).path()));expect(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])[0].type).toBe('TEST शुल्क');
+ await page.getByRole('button',{name:'Edit / Void receipt'}).click();await page.getByLabel('Correction paid',{exact:true}).fill('70');await page.getByRole('button',{name:'Save correction'}).click();expect((await read(page,'erp_pro_fee_ledger'))[0].paid).toBe(75.25);
+ await page.getByLabel('Reason for correction or void').fill('TEST correction');await page.getByRole('button',{name:'Save correction'}).click();let ledger=await read(page,'erp_pro_fee_ledger');expect(ledger).toHaveLength(1);expect(ledger[0].paid).toBe(70);expect(ledger[0].revisions[0].before.paid).toBe(75.25);expect(ledger[0].revisions[0].actor).toBe('development-admin');
+ await page.getByRole('button',{name:'Edit / Void receipt'}).click();await page.getByLabel('Reason for correction or void').fill('TEST void');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Void receipt',exact:true}).click();ledger=await read(page,'erp_pro_fee_ledger');expect(ledger).toHaveLength(1);expect(ledger[0].voidedAt).toBeTruthy();expect(ledger[0].revisions).toHaveLength(2);await page.getByLabel('Show voided receipts').check();await expect(page.getByText('VOIDED',{exact:true})).toBeVisible();
+});
+test('TEST book and equipment master create edit archive with stable IDs',async({page})=>{
+ await nav(page,'Library');for(const [label,value]of [['Book ID / Barcode','TEST-BOOK'],['Book title','TEST पुस्तक'],['Total Copies','3']])await page.getByLabel(label,{exact:true}).fill(value);
+ await page.getByRole('button',{name:'Save book',exact:true}).click();const book=(await read(page,'erp_pro_library_books'))[0];await page.getByRole('button',{name:'Edit book',exact:true}).click();await page.getByLabel('Book title',{exact:true}).fill('TEST पुस्तक Updated');await page.getByRole('button',{name:'Save book',exact:true}).click();expect(await read(page,'erp_pro_library_books')).toHaveLength(1);expect((await read(page,'erp_pro_library_books'))[0]).toMatchObject({id:book.id,name:'TEST पुस्तक Updated'});
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete book',exact:true}).click();expect((await read(page,'erp_pro_library_books'))[0].archivedAt).toBeTruthy();await expect(page.getByRole('button',{name:'Edit book',exact:true})).toHaveCount(0);
+ await nav(page,'Sports');const panel=page.locator('section').filter({has:page.getByRole('heading',{name:'Equipment Master',exact:true})});await panel.getByLabel('name',{exact:true}).fill('TEST Ball');await panel.getByLabel('quantity',{exact:true}).fill('3');await page.getByRole('button',{name:'Save equipment',exact:true}).click();const item=(await read(page,'erp_pro_sports_equipment'))[0];await page.getByRole('button',{name:'Edit equipment',exact:true}).click();await panel.getByLabel('name',{exact:true}).fill('TEST Ball Updated');await page.getByRole('button',{name:'Save equipment',exact:true}).click();expect(await read(page,'erp_pro_sports_equipment')).toHaveLength(1);expect((await read(page,'erp_pro_sports_equipment'))[0].id).toBe(item.id);page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete equipment',exact:true}).click();expect((await read(page,'erp_pro_sports_equipment'))[0].archivedAt).toBeTruthy();
+});
+test('TEST backup merge retains existing records and report exports contain saved Unicode data',async({page})=>{
+ await nav(page,'Backup');
+ const student={id:'TEST-RESTORE-1',name:'TEST विद्यार्थी',grNo:'TEST-GR-1',className:'8',division:'A',academicYear:'2026-27',fatherMobile:'9000000101'};
+ const upload=async rows=>page.getByLabel('Preview backup restore',{exact:true}).setInputFiles({name:'TEST-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({version:2,data:{erp_pro_students:JSON.stringify(rows)}}))});
+ await upload([student]);await page.getByLabel('Merge new records only; retain every existing ID and value.').check();await page.getByRole('button',{name:'Confirm non-destructive restore',exact:true}).click();
+ expect(await read(page,'erp_pro_students')).toHaveLength(1);
+ await upload([{...student,name:'Do not overwrite TEST'}]);await page.getByLabel('Merge new records only; retain every existing ID and value.').check();await page.getByRole('button',{name:'Confirm non-destructive restore',exact:true}).click();expect((await read(page,'erp_pro_students'))[0].name).toBe(student.name);
+ await nav(page,'Reports');await page.getByLabel('Class',{exact:true}).selectOption('8');await page.getByLabel('Division',{exact:true}).fill('A');
+ for(const format of ['Excel','CSV']){const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Download '+format,exact:true}).click();const bytes=await fs.readFile(await(await pending).path());const wb=XLSX.read(bytes);expect(JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]))).toContain(student.name);}
+ await page.getByRole('button',{name:'Preview printable report',exact:true}).click();await expect(page.frameLocator('iframe').locator('body')).toContainText(student.name);
+});
+
+
+test('TEST trip create edit archive retains participant history',async({page})=>{
+ await nav(page,'Students');await page.getByRole('button',{name:'Add student',exact:true}).click();
+ for(const [key,value]of Object.entries({name:'TEST Trip Student',className:'5',division:'A',grNo:'TEST-TRIP-1',fatherMobile:'9000000101'}))await page.locator('input[name='+key+']').fill(value);
+ await page.getByRole('button',{name:'Save Student',exact:true}).click();await nav(page,'Trips');
+ for(const [key,value]of Object.entries({name:'TEST Journey',destination:'TEST Museum',inCharge:'TEST Teacher'}))await page.getByLabel(key,{exact:true}).fill(value);
+ await page.getByRole('checkbox',{name:/TEST Trip Student/}).check();await page.getByRole('button',{name:'Save trip',exact:true}).click();
+ const original=(await read(page,'erp_pro_trips'))[0];expect(original.participants).toHaveLength(1);
+ await page.getByLabel('Consent TEST-TRIP-1',{exact:true}).selectOption({index:1});const consent=(await read(page,'erp_pro_trips'))[0].participants[0].consent;
+ await page.getByRole('button',{name:'Edit trip',exact:true}).click();await page.getByLabel('destination',{exact:true}).fill('TEST Updated Museum');await page.getByRole('button',{name:'Save trip',exact:true}).click();
+ let rows=await read(page,'erp_pro_trips');expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({id:original.id,destination:'TEST Updated Museum'});expect(rows[0].participants[0].consent).toBe(consent);
+ await page.getByLabel('Trip status',{exact:true}).selectOption('Active');await page.getByRole('button',{name:'Archive trip',exact:true}).click();expect((await read(page,'erp_pro_trips'))[0].archivedAt).toBeUndefined();
+ await page.getByLabel('Trip status',{exact:true}).selectOption('Completed');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Archive trip',exact:true}).click();rows=await read(page,'erp_pro_trips');expect(rows).toHaveLength(1);expect(rows[0].archivedAt).toBeTruthy();expect(rows[0].participants[0].consent).toBe(consent);await expect(page.getByRole('button',{name:'Edit trip',exact:true})).toHaveCount(0);
+ await nav(page,'Sports');await page.getByLabel('Student',{exact:true}).selectOption(original.participants[0].studentId);const panel=page.locator('section').filter({has:page.getByRole('heading',{name:'Athlete / competition record',exact:true})});await panel.getByLabel('sport',{exact:true}).fill('TEST Cricket');await page.getByRole('button',{name:'Save athlete',exact:true}).click();const athlete=(await read(page,'erp_pro_sports_athletes'))[0];await page.getByRole('button',{name:'Edit athlete',exact:true}).click();await panel.getByLabel('result',{exact:true}).fill('TEST Winner');await page.getByRole('button',{name:'Save athlete',exact:true}).click();expect(await read(page,'erp_pro_sports_athletes')).toHaveLength(1);expect((await read(page,'erp_pro_sports_athletes'))[0]).toMatchObject({id:athlete.id,result:'TEST Winner'});page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Archive athlete',exact:true}).click();expect((await read(page,'erp_pro_sports_athletes'))[0].archivedAt).toBeTruthy();
+});
+
+
+test('TEST finalized attendance correction preserves original and requires reason',async({page})=>{
+ await nav(page,'Students');await page.getByRole('button',{name:'Add student',exact:true}).click();
+ for(const [key,value]of Object.entries({name:'TEST Attendance',className:'5',division:'A',grNo:'TEST-ATT-1',academicYear:'2026-27',fatherMobile:'9000000101'}))await page.locator('input[name='+key+']').fill(value);
+ await page.getByRole('button',{name:'Save Student',exact:true}).click();await nav(page,'Attendance');await page.getByLabel('Attendance academic year',{exact:true}).selectOption('2026-27');await page.getByLabel('Attendance date',{exact:true}).fill('2026-09-21');await page.getByLabel('Attendance class',{exact:true}).selectOption('5');await page.getByLabel('Attendance division',{exact:true}).selectOption('A');
+ await page.getByRole('button',{name:/^Present .*TEST Attendance$/}).click();await page.getByRole('button',{name:'Review attendance',exact:true}).click();await page.getByRole('button',{name:'Final Submit attendance',exact:true}).click();
+ const before=(await read(page,'erp_pro_attendance_submissions'))[0];expect(before.rows[0].status).toBe('Present');await page.evaluate(({studentId,date})=>window.TEST_STORAGE.setItem('erp_pro_message_jobs',JSON.stringify([{id:'TEST-attendance-job',type:'Present',studentId,status:'Queued',sourceEvent:{fields:{date}}},{id:'TEST-fee-job',type:'Fee Due',studentId,status:'Queued',date}])),{studentId:before.rows[0].id,date:'2026-09-21'});await page.getByRole('button',{name:'Correct finalized attendance',exact:true}).click();await page.getByLabel('Corrected attendance status').selectOption('Absent');await page.getByRole('button',{name:'Save attendance correction',exact:true}).click();expect((await read(page,'erp_pro_attendance_submissions'))[0].rows[0].status).toBe('Present');await page.getByLabel('Attendance correction reason',{exact:true}).fill('TEST marking correction');await page.getByRole('button',{name:'Save attendance correction',exact:true}).click();const after=(await read(page,'erp_pro_attendance_submissions'))[0];const jobs=await read(page,'erp_pro_message_jobs');expect(jobs.find(j=>j.id==='TEST-attendance-job').invalidatedAt).toBeTruthy();expect(jobs.find(j=>j.id==='TEST-fee-job').invalidatedAt).toBeUndefined();expect(after.id).toBe(before.id);expect(after.rows[0].status).toBe('Absent');expect(after.revisions[0]).toMatchObject({actor:'development-admin',reason:'TEST marking correction',before:{status:'Present'},after:{status:'Absent'}});expect((await read(page,'erp_pro_attendance'))['2026-09-21'][before.rows[0].id]).toBe('Absent');
+ const guards=await page.evaluate(async({before,after})=>{const {correctSubmittedAttendance}=await import('/src/services/attendanceCorrections.js');return [{snapshot:after,actor:{uid:'TEST-staff',role:'Teacher'}},{snapshot:before,actor:{uid:'development-admin',role:'Super Admin'}}].map(({snapshot,actor})=>{try{correctSubmittedAttendance(snapshot,snapshot.rows[0].id,{status:'Present'},'TEST guard',actor);return 'UNEXPECTED SAVE'}catch(error){return error.message}})},{before,after});expect(guards[0]).toContain('Management permission');expect(guards[1]).toContain('Attendance changed');expect((await read(page,'erp_pro_attendance_submissions'))[0].revisions).toHaveLength(1);
+});
+
+
+test('TEST result create correct archive recalculates grade and keeps history',async({page})=>{
+ await nav(page,'Students');await page.getByRole('button',{name:'Add student',exact:true}).click();for(const [key,value]of Object.entries({name:'TEST Marks',className:'5',division:'A',grNo:'TEST-MARKS-1',fatherMobile:'9000000101'}))await page.locator('input[name='+key+']').fill(value);await page.getByRole('button',{name:'Save Student',exact:true}).click();const student=(await read(page,'erp_pro_students'))[0];
+ await nav(page,'Results');await page.getByLabel('Student',{exact:true}).selectOption(student.id);await page.getByLabel('Subject',{exact:true}).fill('TEST Math');await page.getByLabel('Obtained Marks',{exact:true}).fill('80');await page.getByRole('button',{name:'Save marks',exact:true}).click();const before=(await read(page,'erp_pro_results'))[0];expect(before.grade).toBe('A');
+ await page.getByRole('button',{name:'Edit / Archive marks',exact:true}).click();await page.getByLabel('Corrected obtained marks').fill('101');await page.getByLabel('Marks correction reason',{exact:true}).fill('TEST correction');await page.getByRole('button',{name:'Save marks correction',exact:true}).click();expect((await read(page,'erp_pro_results'))[0].obtainedMarks).toBe(80);
+ await page.getByLabel('Corrected obtained marks').fill('95');await page.getByRole('button',{name:'Save marks correction',exact:true}).click();let rows=await read(page,'erp_pro_results');expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({id:before.id,grade:'A+',obtainedMarks:95});expect(rows[0].revisions[0].before.obtainedMarks).toBe(80);
+ await page.getByRole('button',{name:'Preview marksheet',exact:true}).click();await expect(page.frameLocator('iframe[title="Marksheet preview"]').locator('body')).toContainText('95');
+ await page.getByRole('button',{name:'Edit / Archive marks',exact:true}).click();await page.getByLabel('Marks correction reason',{exact:true}).fill('TEST archive');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Archive marks',exact:true}).click();rows=await read(page,'erp_pro_results');expect(rows).toHaveLength(1);expect(rows[0].archivedAt).toBeTruthy();expect(rows[0].revisions).toHaveLength(2);await expect(page.getByRole('button',{name:'Edit / Archive marks',exact:true})).toHaveCount(0);
+});
+
+
+test('TEST academic year create duplicate rejection activate close archive reopen',async({page})=>{
+ await nav(page,'AcademicYears');await page.getByLabel('Academic year name',{exact:true}).fill('2027-28');await page.getByRole('button',{name:'Create Academic Year',exact:true}).click();expect((await read(page,'erp_pro_academic_years')).some(y=>y.id==='2027-28')).toBe(true);
+ await page.getByLabel('Academic year name',{exact:true}).fill('2027-28');await page.getByRole('button',{name:'Create Academic Year',exact:true}).click();expect((await read(page,'erp_pro_academic_years')).filter(y=>y.id==='2027-28')).toHaveLength(1);
+ const next=page.locator('article').filter({has:page.getByRole('heading',{name:'2027-28',exact:true})});page.once('dialog',d=>d.accept());await next.getByRole('button',{name:'Activate year',exact:true}).click();expect((await read(page,'erp_pro_academic_context')).current).toBe('2027-28');await expect(next.getByRole('button',{name:'Close year',exact:true})).toBeDisabled();
+ const previous=page.locator('article').filter({has:page.getByRole('heading',{name:'2026-27',exact:true})});page.once('dialog',d=>d.accept());await previous.getByRole('button',{name:'Close year',exact:true}).click();expect((await read(page,'erp_pro_academic_years')).find(y=>y.id==='2026-27').status).toBe('Closed');page.once('dialog',d=>d.accept());await previous.getByRole('button',{name:'Archive year',exact:true}).click();expect((await read(page,'erp_pro_academic_years')).find(y=>y.id==='2026-27').status).toBe('Archived');page.once('dialog',d=>d.accept());await previous.getByRole('button',{name:'Reopen year',exact:true}).click();expect((await read(page,'erp_pro_academic_years')).find(y=>y.id==='2026-27').status).toBe('Open');
+});
+
+
+test('TEST class division CRUD feeds Student Master and protects enrolled students',async({page})=>{
+ await nav(page,'Settings');await page.getByLabel('Master class',{exact:true}).fill('5');await page.getByLabel('Master division',{exact:true}).fill('X');await page.getByRole('button',{name:'Save class / division',exact:true}).click();let settings=await read(page,'schoolSettings');const original=settings.classDivisions[0];expect(original).toMatchObject({className:'5',division:'X'});
+ await page.getByRole('button',{name:'Edit class / division',exact:true}).click();await page.getByLabel('Master division',{exact:true}).fill('Y');await page.getByRole('button',{name:'Save class / division',exact:true}).click();expect((await read(page,'schoolSettings')).classDivisions[0]).toMatchObject({id:original.id,division:'Y'});
+ await nav(page,'Students');await page.getByRole('button',{name:'Add student',exact:true}).click();await expect(page.locator('#configured-classes option[value="5"]')).toHaveCount(1);for(const [key,value]of Object.entries({name:'TEST Class Student',className:'5',division:'Y',grNo:'TEST-CLASS-1',fatherMobile:'9000000101'}))await page.locator('input[name='+key+']').fill(value);await expect(page.locator('#configured-divisions option[value="Y"]')).toHaveCount(1);await page.getByRole('button',{name:'Save Student',exact:true}).click();
+ await nav(page,'Settings');await page.getByRole('button',{name:'Archive class / division',exact:true}).click();expect((await read(page,'schoolSettings')).classDivisions[0].archivedAt).toBeUndefined();await expect(page.getByRole('status').filter({hasText:'Students still use'})).toBeVisible();
+ await page.getByLabel('Master class',{exact:true}).fill('6');await page.getByLabel('Master division',{exact:true}).fill('Z');await page.getByRole('button',{name:'Save class / division',exact:true}).click();const article=page.locator('article').filter({hasText:'6 / Z / 2026-27'});page.once('dialog',d=>d.accept());await article.getByRole('button',{name:'Archive class / division',exact:true}).click();settings=await read(page,'schoolSettings');expect(settings.classDivisions.find(r=>r.className==='6').archivedAt).toBeTruthy();expect((await read(page,'erp_pro_students'))[0]).toMatchObject({className:'5',division:'Y'});
+});

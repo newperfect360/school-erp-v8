@@ -4,6 +4,7 @@ import { SchoolMark } from '../design/SchoolUI';
 import { useLanguage } from '../design/language';
 import {currentSiteUrls} from '../config/siteUrls';
 import './download-app.css';
+import {developmentEnabled} from '@development-auth';
 
 function useRelease() {
   const [release, setRelease] = useState(null);
@@ -24,6 +25,7 @@ function useRelease() {
 export function DownloadAppCard() {
   const { t } = useLanguage();
   const { release } = useRelease();
+  if(developmentEnabled)return <section className="app-download-card" aria-label="Android app download"><span className="app-release-label">PerfectEdu DEMO / TEST BUILD</span><h2>PerfectEdu Android App</h2><p>Version 1.0.0-perfectedu-demo · Android 7.0+. Shared demo records with this computer; production Firebase is unchanged.</p><p>Connect the phone by USB and enable USB debugging, then run <code>adb reverse tcp:5178 tcp:5178</code>. Keep the Web development server running.</p><a className="app-download-button" href="/__school_demo/apk" download="GBSSCHOOL-demo-test.apk">Download current demo APK</a></section>;
   return <section className="app-download-card" aria-label="Android app download">
     <span className="app-release-label">ANDROID · TEST BUILD</span>
     <h2>GBSSCHOOL Android App</h2>
@@ -37,6 +39,7 @@ export function DownloadAppCard() {
 export default function DownloadApp() {
   const settings=readStored("schoolSettings",{});
   const { release, error } = useRelease();
+  if(developmentEnabled)return <main className="perfectedu-platform"><header><a href="/">PerfectEdu</a><a href="/login">School Login</a></header><DownloadAppCard/></main>;
   return <main className="app-download-page">
     <header><a href={currentSiteUrls().webBaseUrl + "/"} className="app-back">← School portal</a><div className="app-download-brand"><SchoolMark logo={settings.logo}/><div><small className="official-institution">{settings.sansthaName}</small><strong>{settings.schoolName}</strong><p>{settings.address}</p></div></div></header>
     <section className="app-download-hero">

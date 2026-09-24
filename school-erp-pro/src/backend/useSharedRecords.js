@@ -4,6 +4,7 @@ import {cloudEnabled,schoolFirebase} from './firebaseClient';
 import {createFirebaseRepository} from './firebaseRepository';
 import {useStoredState} from '../storage';
 import {notify} from '../components/Feedback';
+import {demoActive} from './demoClient';
 
 /** Existing forms await this setter. Firebase mode never writes an operational local copy. */
 const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
@@ -32,7 +33,11 @@ export function useSharedRecords(collection,localKey,options={}) {
   return()=>{live=false;repository.current=null;records.current=new Map();stop();};
  },[shared,collection,kind,aliasKey]);
  async function save(next) {
-  if(!shared)return local[1](next);
+  if(!shared){
+   if(!demoActive())return local[1](next);
+   const updated=typeof next==='function'?next(local[0]):next;
+   return local[1](updated.map(item=>{const row={...item};for(const [label,key]of Object.entries(JSON.parse(aliasKey))){row[key]=row[label]??row[key]??'';if(label!==key)delete row[label];}if(kind)row.kind=kind;return row;}));
+  }
   if(!repository.current||saving.current){notify('Wait for the school connection or current save.');return false;}
   saving.current=true;setBusy(true);setStatus('Saving to the school database...');
   try{
@@ -57,5 +62,6 @@ export function useSharedRecords(collection,localKey,options={}) {
   }catch(error){setStatus(error.message);notify(error.message);return false;}
   finally{saving.current=false;setBusy(false);}
  }
- return [shared?rows:local[0],save,{shared,busy,status},()=>{if(!shared)local[2]();}];
+ const localRows=demoActive()?local[0].map(item=>({...item,...Object.fromEntries(Object.entries(JSON.parse(aliasKey)).map(([label,key])=>[label,item[key]??item[label]??'']))})):local[0];
+ return [shared?rows:localRows,save,{shared,busy,status},()=>{if(!shared)local[2]();}];
 }

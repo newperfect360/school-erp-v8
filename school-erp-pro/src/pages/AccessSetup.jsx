@@ -3,9 +3,12 @@ import { useState } from "react";
 import { useStoredState } from "../storage";
 import { notify } from "../components/Feedback";
 import { PageHeading } from "../design/SchoolUI";
+import {developmentEnabled} from '@development-auth';
+import DevelopmentUsers from './DevelopmentUsers';
 
 export const schoolRoles = ["Super Admin", "Headmaster", "Admin", "Class Teacher", "Subject Teacher", "Sports Teacher", "Trip In-charge", "Library Staff", "Office Staff", "Accounts Staff"];
-export default function AccessSetup() {
+export default function AccessSetup(){return developmentEnabled?<DevelopmentUsers/>:<ProductionAccessSetup/>;}
+function ProductionAccessSetup() {
   const { t } = useLanguage();
   const [requests, saveRequests] = useStoredState("erp_pro_access_requests", []), [form, setForm] = useState({ name: "", email: "", role: "Class Teacher", assignedClass: "", assignedSubject: "", permissions: "", employeeId: "", username: "", mobile: "", photo: "" });
   const save = () => { if (!form.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return notify("Name and valid school email are required."); if (requests.some(r => r.email.toLowerCase() === form.email.toLowerCase())) return notify("This email already has an access setup record."); if (saveRequests([...requests, { ...form, id: crypto.randomUUID(), status: "Pending identity provider", createdAt: new Date().toISOString() }])) { setForm({ ...form, name: "", email: "" }); notify("Access setup request saved. No login account has been created."); } };

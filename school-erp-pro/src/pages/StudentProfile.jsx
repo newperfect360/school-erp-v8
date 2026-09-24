@@ -1,3 +1,4 @@
+import {studentReference} from '../services/studentReference';
 import FamilyContactCard from '../components/FamilyContactCard';
 import { useState } from "react";
 import Icon from "../components/Icon";
@@ -15,7 +16,7 @@ export default function StudentProfile({ student, settings, onBack, onNavigate }
   const contacts = parentContacts(student);
   const results = readStored("erp_pro_results", []).filter(result => result.studentId ? String(result.studentId) === String(student.id) : result.grNo && result.grNo === student.grNo);
   const certificates = readStored("erp_pro_certificates", []).filter(item => item.studentId ? String(item.studentId) === String(student.id) : item.grNo && item.grNo === student.grNo);
-  const qr = qrImage(`schoolerp:student:v1:${encodeURIComponent(String(student.id))}`);
+  const qr = qrImage(studentReference(student.id,settings.tenantId));
   const present = records.filter(([, day]) => ["Present", "Late", "Half Day"].includes(day[student.id])).length;
   const percent = records.length ? Math.round(present / records.length * 100) : null;
   const fields = [["Full name · original", "पूर्ण नाव · मूळ", student.student_name_en || student.name], ["Marathi name", "मराठी नाव", student.student_name_mr || student.name_mr], ["Date of birth", "जन्म दिनांक", student.dob], ["Gender", "लिंग", student.gender], ["Blood group", "रक्तगट", student.bloodGroup], ["Academic year", "शैक्षणिक वर्ष", student.academicYear || academicYear(settings)], ["Address", "पत्ता", language === "mr" ? student.address_mr || student.address : student.address_en || student.address]];

@@ -31,11 +31,7 @@ export default function Attendance({ initialClass = "", initialDivision = "", in
   const [divisionFilter, setDivisionFilter] = useState(initialDivision);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [classTeachers, setClassTeachers] = useStoredState("erp_pro_classTeachers", [
-    { className: "8", division: "A", teacherName: "पवार डी. एम." },
-    { className: "9", division: "A", teacherName: "शिंदे एस. के." },
-    { className: "10", division: "A", teacherName: "जाधव आर. बी." },
-  ]);
+  const [classTeachers, setClassTeachers] = useStoredState("erp_pro_classTeachers", []);
   const [year,setYear]=useState(currentAcademicYear());
   const [localDrafts,saveLocalDrafts,reloadDrafts]=useStoredState(draftKey,{});
   const drafts=connection.shared?Object.fromEntries(sharedAttendance.map(row=>[draftId(row.academicYear,row.date,row.studentId),row])):localDrafts;

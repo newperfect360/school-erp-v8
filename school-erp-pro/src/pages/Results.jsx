@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {useSharedRecords} from "../backend/useSharedRecords";
 import {CommunicationSession} from "../backend/CommunicationSession";
 import { useLanguage } from "../design/language";
@@ -40,7 +41,7 @@ export default function Results({ settings = {}, onNavigate }) {
     if (await saveResults([...results, { id: crypto.randomUUID(), ...calculatedResult(row), createdAt: new Date().toISOString() }])) { setForm({ ...form, subject: "", obtainedMarks: "" }); setPreview(""); notify("Result saved."); }
   };
   const load = async event => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; setReview(null); setReplace(false); setUpload(null); try { const parsed = await parseStudentFile(file); if (marksColumns.some(h => !parsed.headers.includes(h))) throw new Error("Use the marks template headers."); setUpload(parsed); } catch (error) { notify(error.message); } };
-  const validate = () => { const source = connection.shared?JSON.stringify(results):localStorage.getItem("erp_pro_results"); try { const existing = source ? JSON.parse(source) : []; if (!Array.isArray(existing)) throw new Error("Invalid result storage."); setReview({ source, existing, rows: reviewMarks(upload.rows, students, existing, exam, component, year) }); } catch (error) { notify(error.message); } };
+  const validate = () => { const source = connection.shared?JSON.stringify(results):schoolStorage.getItem("erp_pro_results"); try { const existing = source ? JSON.parse(source) : []; if (!Array.isArray(existing)) throw new Error("Invalid result storage."); setReview({ source, existing, rows: reviewMarks(upload.rows, students, existing, exam, component, year) }); } catch (error) { notify(error.message); } };
   const confirm = async () => {
     if (!review || review.rows.some(r => r.errors.length) || (review.rows.some(r => r.existing) && !replace)) return;
     try {

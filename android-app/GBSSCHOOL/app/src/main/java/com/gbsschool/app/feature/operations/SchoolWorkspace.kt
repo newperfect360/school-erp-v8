@@ -2,6 +2,8 @@ package com.gbsschool.app.feature.operations
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -53,6 +55,9 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
     var form by remember { mutableStateOf<Map<String,String>?>(null) }
     var deleting by remember { mutableStateOf<Map<String,Any>?>(null) }
     var expanded by remember { mutableStateOf(false) }
+    val audioPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if(uri!=null)try { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type="audio/*";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) },"Share school audio notice")) } catch(_:Exception){message="No application can share this audio file."}
+    }
     DisposableEffect(repo) {
         var live = true
         var stop: (() -> Unit)? = null
@@ -103,7 +108,7 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
                 classId = linked["class_id"].toString()
             }
             if (screen.collection == "attendance") {
-                val statuses = listOf("Present","Absent","Late","Permission Leave","Early Leave","Approved Leave","Sick Leave","Official Duty")
+                val statuses = listOf("Present","Absent","Late","Permission Leave","Early Leave","Approved Leave","Sick Leave","Half Day","Official Duty")
                 if (values["status"] !in statuses) { message = "Select a valid attendance status."; return }
                 val date = values["date"]?.toString() ?: ""
                 val format = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT).apply { isLenient = false }
@@ -121,6 +126,10 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
                 val obtained = values["obtainedMarks"].toString().toDoubleOrNull()
                 if (maximum == null || obtained == null || !maximum.isFinite() || !obtained.isFinite() || maximum <= 0 || obtained < 0 || obtained > maximum) { message = "Marks must be between zero and the positive maximum."; return }
                 values["maxMarks"] = maximum; values["obtainedMarks"] = obtained
+                val percentage=kotlin.math.round(obtained/maximum*10000)/100
+                values["percentage"]=percentage;values["pass"]=percentage>=35
+                values["grade"]=when { percentage>=90->"A+";percentage>=75->"A";percentage>=60->"B";percentage>=45->"C";percentage>=35->"D";else->"F" }
+                values["component"]=values["component"] ?: "Theory"
             }
             if (screen.collection == "trips") {
                 val ids = (form?.get("participantIds") ?: "").split(",").filter { it.isNotBlank() }
@@ -180,7 +189,7 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
                     var chooseStatus by remember { mutableStateOf(false) }
                     Box {
                         OutlinedButton(onClick = { chooseStatus = true }, enabled = !busy) { Text(current[field]?.ifBlank { "Select attendance status" } ?: "Select attendance status") }
-                        DropdownMenu(chooseStatus, { chooseStatus = false }) { listOf("Present","Absent","Late","Permission Leave","Early Leave","Approved Leave","Sick Leave","Official Duty").forEach { status -> DropdownMenuItem(text = { Text(status) }, onClick = { form = current + (field to status); chooseStatus = false }) } }
+                        DropdownMenu(chooseStatus, { chooseStatus = false }) { listOf("Present","Absent","Late","Permission Leave","Early Leave","Approved Leave","Sick Leave","Half Day","Official Duty").forEach { status -> DropdownMenuItem(text = { Text(status) }, onClick = { form = current + (field to status); chooseStatus = false }) } }
                     }
                 } else if (field == "studentId") {
                     var pick by remember { mutableStateOf(false) }
@@ -197,9 +206,25 @@ fun SchoolWorkspace(modules: List<String>, repository: SchoolRepository? = null,
                 selected?.fields?.forEach { key -> Text("$key: ${data(row)[key] ?: ""}") }
                 Row { TextButton(onClick = { editing = row; form = selected!!.fields.associateWith { data(row)[it]?.toString() ?: "" } + ("participantIds" to ((data(row)["participants"] as? List<*>)?.filterIsInstance<Map<*,*>>()?.mapNotNull { it["studentId"]?.toString() }?.joinToString(",") ?: "")) }, enabled = !busy) { Text("Edit") }; TextButton(onClick = { deleting = row }, enabled = !busy) { Text("Archive") } }
                 val contact = if (selected?.collection == "students") row else students.find { it["id"] == data(row)["studentId"] }
-                if (contact != null && (selected?.collection == "students" || data(row)["status"] == "Absent")) {
+                if (contact != null && selected?.collection in listOf("students","attendance")) {
+                    TextButton(onClick={audioPicker.launch("audio/*")}) { Text("Audio message — choose file") }
                     listOf("Father" to "fatherMobile","Mother" to "motherMobile","Emergency" to "emergencyContact").forEach { (title,key) ->
                         val phone = data(contact)[key]?.toString()?.replace(Regex("[^+0-9]"),"") ?: ""
+                        if (Regex("\\+?[0-9]{7,15}").matches(phone)) {
+                            val date=data(row)["date"]?.toString() ?: java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT).format(java.util.Date())
+                            val text=if(selected?.collection=="attendance")"Your child ${data(contact)["name"]}, Class ${data(contact)["className"]}/${data(contact)["division"]}, is marked ${data(row)["status"]} on $date. Please contact the school if required." else "Regarding your child ${data(contact)["name"]}, Class ${data(contact)["className"]}/${data(contact)["division"]}: please contact the school."
+                            Row {
+                                listOf("SMS","WhatsApp").forEach { channel -> TextButton(onClick={
+                                    try {
+                                        val digits=phone.removePrefix("+").let { if(it.length==10)"91$it" else it }
+                                        val intent=if(channel=="SMS")Intent(Intent.ACTION_SENDTO,Uri.parse("smsto:$phone")).putExtra("sms_body",text) else Intent(Intent.ACTION_VIEW,Uri.parse("https://wa.me/$digits?text=${Uri.encode(text)}"))
+                                        context.startActivity(intent)
+                                        val log=mapOf<String,Any?>("studentId" to contact["id"],"channel" to channel.lowercase(),"calledPerson" to title,"parentMobile" to phone,"mobile" to phone,"message" to text,"date" to date,"initiatedAt" to java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX",java.util.Locale.ROOT).format(java.util.Date()),"initiatedBy" to sessionActorUid,"status" to "Composer requested — delivery unverified")
+                                        repo.mutate(SchoolMutation("communication_logs",UUID.randomUUID().toString(),contact["class_id"].toString(),0,log)).addOnFailureListener { message="Composer opened; history was not saved: ${it.message}" }
+                                    }catch(_:Exception){message="No compatible application is installed for $channel."}
+                                }) { Text("$channel $title") } }
+                            }
+                        }
                         if (Regex("\\+?[0-9]{7,15}").matches(phone)) OutlinedButton(onClick = {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_DIAL,Uri.parse("tel:$phone")))

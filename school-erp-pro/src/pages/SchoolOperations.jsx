@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {useSharedRecords} from "../backend/useSharedRecords";
 import {exportRows} from '../services/excel';
 import StaffAttendance from '../components/StaffAttendance';
@@ -31,7 +32,7 @@ function BackupPanel() {
       try {
         const backup = JSON.parse(reader.result);
         if (!backup?.data || typeof backup.data !== "object" || !window.confirm("हा backup local dataमध्ये restore करायचा आहे का?")) return;
-        Object.entries(backup.data).forEach(([key, value]) => localStorage.setItem(key, value));
+        Object.entries(backup.data).forEach(([key, value]) => schoolStorage.setItem(key, value));
         recordAudit("Backup restore", { version: backup.version || "unknown" });
         notify("Backup restore झाला. पान reload करा.");
       } catch { notify("Backup file वाचता आली नाही."); }

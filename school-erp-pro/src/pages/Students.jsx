@@ -1,3 +1,4 @@
+import {schoolStorage} from '../backend/demoClient';
 import {useSharedRecords} from "../backend/useSharedRecords";
 import StudentForm from '../components/StudentForm';
 import StudentChangeDialog, {StudentActions} from '../components/StudentActions';
@@ -40,7 +41,7 @@ export default function Students({ studentId, mode: initialMode, initialClass = 
     const previous=students.find(s=>s.id===form.id);
     const changed=previous&&['className','division','rollNo','academicYear','status'].some(k=>String(previous[k]||'')!==String(record[k]||''));
     if(changed)return notify('Use Student Lifecycle for class, roll, academic-year or status changes so history is preserved.');
-    if(connection.shared){if(!await saveStudents(previous?students.map(s=>s.id===record.id?record:s):[...students,{...record,status:record.status||"Active"}]))return;}else if(previous){if(!await saveStudents(students.map(s=>s.id===record.id?record:s)))return;}else{try{commitStoredBatch({erp_pro_students:[...students,{...record,status:record.status||'Active'}],erp_pro_student_movements:[...readStored('erp_pro_student_movements',[]),{id:crypto.randomUUID(),studentId:record.id,studentName:record.name,grNo:record.grNo,action:'Added',type:'Added',oldValue:null,newValue:enrollment(record),actor:'local-review',createdAt:new Date().toISOString()}]},{erp_pro_students:JSON.stringify(students)===JSON.stringify(readStored('erp_pro_students',[]))?localStorage.getItem('erp_pro_students'):'STALE'});reloadStudents()}catch(e){notify(e.message);return;}}
+    if(connection.shared){if(!await saveStudents(previous?students.map(s=>s.id===record.id?record:s):[...students,{...record,status:record.status||"Active"}]))return;}else if(previous){if(!await saveStudents(students.map(s=>s.id===record.id?record:s)))return;}else{try{commitStoredBatch({erp_pro_students:[...students,{...record,status:record.status||'Active'}],erp_pro_student_movements:[...readStored('erp_pro_student_movements',[]),{id:crypto.randomUUID(),studentId:record.id,studentName:record.name,grNo:record.grNo,action:'Added',type:'Added',oldValue:null,newValue:enrollment(record),actor:'local-review',createdAt:new Date().toISOString()}]},{erp_pro_students:JSON.stringify(students)===JSON.stringify(readStored('erp_pro_students',[]))?schoolStorage.getItem('erp_pro_students'):'STALE'});reloadStudents()}catch(e){notify(e.message);return;}}
     if(!connection.shared)recordAudit(form.id ? "Student updated" : "Student created", { studentId: record.id }); setForm({}); setClassFilter(""); setDivisionFilter(""); setShowArchived(!lifecycleActive(record)); setQuery(record.grNo); setMode("directory"); notify("Student saved.");
   };
   const archive = async id => {
