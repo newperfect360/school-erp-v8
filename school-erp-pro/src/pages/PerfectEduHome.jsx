@@ -4,6 +4,8 @@ import Icon from '../components/Icon';
 import './perfectedu-home.css';
 
 const features=[
+ ['grid','Multi-school management','बहुशाळा व्यवस्थापन','Independent school identities, UDISE-based sign-in and protected school records.','स्वतंत्र शाळा ओळख, UDISE आधारित प्रवेश आणि सुरक्षित शालेय नोंदी.'],
+ ['chart','Platform reports','व्यवस्थापन अहवाल','School statistics and authorized oversight across institutions.','संस्थांमधील शाळांची आकडेवारी आणि अधिकृत देखरेख.'],
  ['users','Student management','विद्यार्थी व्यवस्थापन','Admission, profiles, classes and academic years.','प्रवेश, विद्यार्थी माहिती, वर्ग आणि शैक्षणिक वर्ष.'],
  ['calendar','Attendance','उपस्थिती व्यवस्थापन','Daily registers, leave and attendance history.','दैनंदिन उपस्थिती, रजा आणि उपस्थिती इतिहास.'],
  ['message','Parent communication','पालक संवाद','Prepared messages, calls and contact history.','तयार संदेश, फोन आणि संवाद इतिहास.'],

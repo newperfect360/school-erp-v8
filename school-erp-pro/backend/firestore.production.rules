@@ -9,12 +9,12 @@ service cloud.firestore {
 
     function member(school) { return get(/databases/$(database)/documents/schools/$(school)/members/$(request.auth.uid)).data; }
     function active(school) { return request.auth != null && get(/databases/$(database)/documents/schools/$(school)).data.status == 'ACTIVE' && member(school).active == true && member(school).passwordSetupComplete == true; }
-    function admin(school) { return active(school) && member(school).role in ['Admin','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN']; }
+    function admin(school) { return active(school) && member(school).role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN']; }
     function known(resource) { return resource in ['students','parents','teachers','attendance','academic_years','homework','exams','results','fees','library','sports','scholarships','trips','certificates','notifications','communication_logs','settings']; }
     function moduleAllowed(school, resource) {
       let m = member(school);
       return active(school) && m.active == true && m.passwordSetupComplete == true && resource in m.resources && (
-        m.role in ['Admin','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || resource in ['academic_years','notifications','settings'] ||
+        m.role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || resource in ['academic_years','notifications','settings'] ||
         (m.role in ['Teacher','Class Teacher','Subject Teacher'] && resource in ['students','parents','attendance','homework','exams','results','communication_logs','certificates']) ||
         (m.role == 'Sports Teacher' && resource in ['students','sports','communication_logs']) ||
         (m.role == 'Library Staff' && resource in ['students','library','communication_logs']) ||
@@ -24,7 +24,7 @@ service cloud.firestore {
     }
     function scopeAllowed(school, resource, row) {
       let m = member(school);
-      return m.role in ['Admin','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || row.class_id in m.classIds ||
+      return m.role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || row.class_id in m.classIds ||
         (resource == 'students' && row.id in m.studentIds) ||
         ('studentId' in row.data && row.data.studentId in m.studentIds) ||
         (row.class_id == '' && resource in ['academic_years','notifications','settings']) ||
@@ -32,7 +32,7 @@ service cloud.firestore {
     }
     function canWrite(school, collection, row) {
       return moduleAllowed(school, collection) && scopeAllowed(school, collection, row) &&
-        (member(school).role in ['Admin','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
+        (member(school).role in ['Admin','SCHOOL_ADMIN','Super Admin','SUPER_ADMIN','SCHOOL_SUPER_ADMIN'] || !(collection in ['settings','academic_years','notifications','certificates','teachers']));
     }
     function envelope(id) {
       return request.resource.data.keys().hasOnly(['id','class_id','version','updated_at','updated_by','deleted','data']) &&

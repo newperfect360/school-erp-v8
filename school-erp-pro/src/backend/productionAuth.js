@@ -15,7 +15,8 @@ export async function signIn(email, password, udise='') {
   }
   await setPersistence(auth, browserSessionPersistence);
   const credential=await signInWithEmailAndPassword(auth, email.trim(), password);
-  if(tenantAuthEnabled)try{await tenantRequest('session',udise.trim());}catch(error){await signOut(auth);throw error;}
+  // useSchoolSession performs tenant verification before publishing a session.
+  // Avoid a second concurrent verifier signing out a valid session during navigation.
   return credential;
 }
 export async function forgotPassword(email) {

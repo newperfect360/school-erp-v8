@@ -3,10 +3,11 @@ import {initializeApp} from 'firebase-admin/app';
 import {getFirestore,Timestamp} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {createHash} from 'node:crypto';
+import {platformAction} from './platform.js';
 initializeApp();
 const db=getFirestore();
 const deny=(status,message)=>{throw Object.assign(Error(message),{httpStatus:status});};
-const approvedRoles=new Set(['SUPER_ADMIN','SCHOOL_SUPER_ADMIN','Super Admin','Admin','ADMIN','Headmaster','HEADMASTER','Teacher','TEACHER','Class Teacher','CLASS_TEACHER','Subject Teacher','Clerk','CLERK','Office Staff','STAFF','Sports Teacher','SPORTS_TEACHER','Trip In-charge','Library Staff','LIBRARIAN','Accounts Staff','ACCOUNTANT','VIEW_ONLY']);
+const approvedRoles=new Set(['SUPER_ADMIN','SCHOOL_SUPER_ADMIN','SCHOOL_ADMIN','Super Admin','Admin','ADMIN','Headmaster','HEADMASTER','Teacher','TEACHER','Class Teacher','CLASS_TEACHER','Subject Teacher','Clerk','CLERK','Office Staff','STAFF','Sports Teacher','SPORTS_TEACHER','Trip In-charge','Library Staff','LIBRARIAN','Accounts Staff','ACCOUNTANT','VIEW_ONLY']);
 async function schoolFor(udise){
  if(!/^\d{11}$/.test(udise||''))deny(400,'Enter the school’s 11-digit UDISE.');
  const found=await db.collection('schools').where('udise','==',udise).limit(2).get();
@@ -24,8 +25,9 @@ export const perfectEduAuth=onRequest({region:'asia-south1',maxInstances:3,minIn
  res.set('Cache-Control','no-store');
  try{
   if(req.method!=='POST')return res.status(405).json({error:'POST required.'});
-  if(!req.is('application/json')||Buffer.byteLength(JSON.stringify(req.body||{}))>4096)deny(400,'Invalid request.');
+  if(!req.is('application/json')||Buffer.byteLength(JSON.stringify(req.body||{}))>250000)deny(400,'Invalid request.');
   await throttle(req);
+  if(String(req.body?.action||'').startsWith('platform-'))return res.json(await platformAction(req));
   const {action,udise,identifier}=req.body||{};
   const school=await schoolFor(String(udise||'').trim());
   if(action==='school')return res.json({school});

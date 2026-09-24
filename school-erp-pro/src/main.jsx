@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import PerfectEduPlatform from './pages/PerfectEduPlatform'
+import {developmentEnabled} from '@development-auth'
+import PlatformAdministration from './pages/PlatformAdministration'
 import PerfectEduHome from './pages/PerfectEduHome'
 import './design/perfectedu.css'
 import DownloadApp from './pages/DownloadApp.jsx'
@@ -20,6 +22,6 @@ initializeSchoolIdentity();
 document.title='PerfectEdu | School Management';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <LanguageProvider>{window.location.pathname==='/'?<PerfectEduHome/>:window.location.pathname.replace(/\/$/, '') === '/admin' ? <PerfectEduPlatform/> : window.location.pathname.replace(/\/$/, '') === '/download-app' ? <DownloadApp /> : <App />}</LanguageProvider>
+    <LanguageProvider>{window.location.pathname.replace(/\/$/,'')==='/platform-admin'?<PlatformAdministration/>:window.location.pathname==='/'?<PerfectEduHome/>:window.location.pathname.replace(/\/$/, '') === '/admin' ? (developmentEnabled?<PerfectEduPlatform/>:<PlatformAdministration/>) : window.location.pathname.replace(/\/$/, '') === '/download-app' ? <DownloadApp /> : <App />}</LanguageProvider>
   </StrictMode>,
 )

@@ -50,7 +50,7 @@ export default function SchoolLogin({ settings, status }) {
         <button type="submit" className="school-button login-submit" disabled={busy} aria-label={mode === 'login' ? 'Login' : 'Submit password request'}>{mode === 'login' ? 'Sign in to school' : mode === 'forgot' ? 'Send reset link' : 'Reset Password'}</button>
         <div className="login-academic-year"><Icon name="calendar" size={17} />{t("Academic year", "शैक्षणिक वर्ष")} <strong>{academicYear(settings)}</strong></div>
       </form>
-      <div className="login-bottomline"><p>PerfectEdu ? www.perfectedu.co.in</p><a href="/admin">Platform Admin</a></div>
+      <div className="login-bottomline"><p>PerfectEdu ? www.perfectedu.co.in</p><a href="/platform-admin">Platform Admin</a></div>
     <DownloadAppCard/></main>
   </div>;
 }
